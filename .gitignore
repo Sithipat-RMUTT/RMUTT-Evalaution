@@ -1,0 +1,92 @@
+# yii console test commands
+/yii_test
+/yii_test.bat
+
+# phpstorm project files
+.idea
+
+# visual studio code project files
+.vscode
+
+# netbeans project files
+nbproject
+
+# zend studio for eclipse project files
+.buildpath
+.project
+.settings
+
+# windows thumbnail & desktop cache
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# composer vendor dir
+/vendor
+
+# composer itself is not needed
+composer.phar
+
+# environment files (keep .env.example only)
+/.env
+/.env.*
+!/.env.example
+
+# Mac DS_Store Files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# node
+/node_modules
+/package.json
+/package-lock.json
+
+# phpunit itself is not needed
+phpunit.phar
+# local phpunit config
+/phpunit.xml
+
+# vagrant runtime
+/.vagrant
+
+# test entrypoints
+/frontend/web/index-test.php
+/backend/web/index-test.php
+
+# Web assets published dynamically by Yii
+/frontend/web/assets/*
+!/frontend/web/assets/.gitkeep
+/backend/web/assets/*
+!/backend/web/assets/.gitkeep
+
+# Runtime, logs, debug, cache, session, and evidence
+/frontend/runtime/*
+!/frontend/runtime/.gitkeep
+/backend/runtime/*
+!/backend/runtime/.gitkeep
+/console/runtime/*
+!/console/runtime/.gitkeep
+/runtime/*
+!/runtime/.gitkeep
+
+# Private storage and uploads
+/frontend/runtime/private/*
+!/frontend/runtime/private/.gitkeep
+/frontend/web/uploads/*
+!/frontend/web/uploads/.gitkeep
+/private/evidence/*
+/uploads/*
+!/uploads/.gitkeep
+
+# Database backups and dumps
+/backups/*
+!/backups/.gitkeep
+*.sql.gz
+*.sql.enc
+
+# Temporary, log, and scratch files
+*.log
+*.tmp
+*.bak
+cookies*.txt

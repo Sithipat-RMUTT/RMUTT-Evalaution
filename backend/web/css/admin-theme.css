@@ -1,0 +1,142 @@
+/* RMUTT Evaluation System - HR Admin Portal Theme */
+
+:root {
+    --rmutt-navy-950: #040d1a;
+    --rmutt-navy-900: #07152b;
+    --rmutt-navy-800: #0d2244;
+    --rmutt-navy-700: #133160;
+    --rmutt-blue-primary: #0284c7;
+    --rmutt-blue-dark: #0369a1;
+    --rmutt-blue-light: #e0f2fe;
+    --rmutt-blue-accent: #38bdf8;
+    --rmutt-gold-600: #d97706;
+    --rmutt-gold-500: #f59e0b;
+    --rmutt-gold-400: #fbbf24;
+    --rmutt-bg-page: #f8fafc;
+    --rmutt-card-border: #e2e8f0;
+}
+
+body {
+    background-color: var(--rmutt-bg-page);
+    font-family: 'Sarabun', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    color: #1e293b;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Admin Topbar (Executive Royal Navy with Gold Line) */
+.navbar-admin {
+    background: linear-gradient(135deg, var(--rmutt-navy-900) 0%, var(--rmutt-navy-800) 65%, #0e274c 100%);
+    border-bottom: 2.5px solid var(--rmutt-gold-500);
+    box-shadow: 0 4px 20px rgba(7, 21, 43, 0.25);
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
+}
+
+.navbar-admin .navbar-brand {
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: #ffffff !important;
+}
+
+.navbar-admin .nav-link {
+    color: #e2e8f0 !important;
+    font-weight: 500;
+    font-size: 0.92rem;
+    padding: 0.5rem 0.85rem !important;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease-in-out;
+}
+
+.navbar-admin .nav-link:hover, .navbar-admin .nav-link.active {
+    background-color: rgba(255, 255, 255, 0.12);
+    color: #ffffff !important;
+}
+
+.navbar-admin .dropdown-menu {
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12);
+    padding: 0.5rem;
+}
+
+/* Executive Stat KPI Cards */
+.stat-card {
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+    padding: 1.35rem 1.5rem;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    height: 100%;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.stat-card .stat-icon {
+    position: absolute;
+    right: 18px;
+    top: 18px;
+    font-size: 2.75rem;
+    opacity: 0.14;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.stat-card:hover .stat-icon {
+    transform: scale(1.1);
+    opacity: 0.22;
+}
+
+/* Cards & Containers */
+.card-rmutt {
+    border: 1px solid var(--rmutt-card-border);
+    border-radius: 16px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+    background-color: #ffffff;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+
+.card-rmutt .card-header {
+    background-color: #ffffff;
+    border-bottom: 1px solid #f1f5f9;
+    padding: 1.15rem 1.45rem;
+    font-weight: 700;
+    color: var(--rmutt-navy-900);
+}
+
+/* Data Tables */
+.table-admin th {
+    background-color: #f8fafc;
+    color: #475569;
+    font-weight: 700;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-top: none;
+    padding: 0.85rem 1rem;
+}
+
+.table-admin td {
+    vertical-align: middle;
+    padding: 0.85rem 1rem;
+    border-bottom-color: #f1f5f9;
+}
+
+.table-admin tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+/* Department Progress Bar Widget */
+.dept-progress-item {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.dept-progress-item:last-child {
+    border-bottom: none;
+}

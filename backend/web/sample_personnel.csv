@@ -1,0 +1,5 @@
+employee_code,username,email,prefix_th,first_name_th,last_name_th,citizen_id,personnel_type_code,position_name,department_code
+CIV002,somchai_k,somchai_k@rmutt.ac.th,นาย,สมชาย,เกียรติขจร,1100500123451,CIVIL,นักวิชาการคอมพิวเตอร์ ชำนาญการ,ARIT-IT
+UNV002,kamonwan_s,kamonwan_s@rmutt.ac.th,นางสาว,กมลวรรณ,สว่างเนตร,1100500123452,UNIVERSITY,นักวิชาการศึกษา ปฏิบัติการ,ARIT-ADM
+GOV002,anupong_t,anupong_t@rmutt.ac.th,นาย,อนุพงษ์,ทองมี,1100500123453,GOVT,เจ้าพนักงานธุรการ ปฏิบัติงาน,ARIT-LIB
+SPC002,chalita_m,chalita_m@rmutt.ac.th,นางสาว,ชลิตา,มีทรัพย์,1100500123454,SPECIAL,เจ้าหน้าที่บริการระบบสารสนเทศ,ARIT-IT

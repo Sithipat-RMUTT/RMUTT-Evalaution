@@ -1,0 +1,671 @@
+/* ==========================================================================
+   RMUTT Evaluation System — Login Page Theme (HR Admin Portal)
+   Institution: Rajamangala University of Technology Thanyaburi (RMUTT)
+   Concept: Prestigious Executive Architectural Portal
+   ========================================================================== */
+
+:root {
+    --rmutt-navy-950: #030814;
+    --rmutt-navy-900: #060f1f;
+    --rmutt-navy-800: #0b1a33;
+    --rmutt-navy-700: #10264a;
+    --rmutt-navy-600: #183768;
+    --rmutt-blue-600: #0284c7;
+    --rmutt-blue-500: #0ea5e9;
+    --rmutt-blue-400: #38bdf8;
+    --rmutt-gold-600: #d97706;
+    --rmutt-gold-500: #f59e0b;
+    --rmutt-gold-400: #fbbf24;
+    --rmutt-emerald-500: #10b981;
+    --rmutt-surface: #ffffff;
+    --rmutt-surface-subtle: #f8fafc;
+    --rmutt-text-main: #0f172a;
+    --rmutt-text-muted: #64748b;
+    --rmutt-text-subtle: #94a3b8;
+    --rmutt-border: #e2e8f0;
+    --rmutt-border-focus: #0f2744;
+    --rmutt-danger: #ef4444;
+    --font-family-base: 'Sarabun', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-family-heading: 'Prompt', 'Sarabun', sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    font-family: var(--font-family-base);
+    background-color: var(--rmutt-navy-900);
+    color: var(--rmutt-text-main);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: clip;
+}
+
+.rmutt-login-page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Ambient Executive Stage Background */
+.rmutt-login-stage {
+    min-height: 100vh;
+    width: 100%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem 1.25rem;
+    background: 
+        radial-gradient(ellipse 80% 50% at 50% -12%, rgba(2, 132, 199, 0.35) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 45% at 85% 92%, rgba(245, 158, 11, 0.1) 0%, transparent 60%),
+        radial-gradient(circle at 12% 78%, rgba(16, 185, 129, 0.08) 0%, transparent 50%),
+        linear-gradient(165deg, var(--rmutt-navy-950) 0%, var(--rmutt-navy-900) 45%, #081a33 100%);
+    overflow-x: clip;
+}
+
+/* Top Executive Accent Bar */
+.rmutt-top-accent {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3.5px;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        var(--rmutt-blue-400) 25%, 
+        var(--rmutt-gold-500) 50%, 
+        var(--rmutt-blue-400) 75%, 
+        transparent 100%
+    );
+    z-index: 100;
+}
+
+/* Subtle Geometric Dot Matrix */
+.rmutt-bg-pattern {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    background-size: 34px 34px;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.85;
+}
+
+/* Center Content Wrapper */
+.rmutt-login-wrapper {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 480px;
+    margin: auto 0;
+}
+
+.rmutt-login-card {
+    background: var(--rmutt-surface);
+    border-radius: 22px;
+    padding: 2.25rem 2.5rem 2rem;
+    box-shadow: 
+        0 4px 6px -1px rgba(0, 0, 0, 0.08),
+        0 20px 50px -10px rgba(3, 15, 33, 0.52),
+        0 0 0 1px rgba(255, 255, 255, 0.95),
+        0 0 0 4px rgba(2, 132, 199, 0.1);
+    position: relative;
+    box-sizing: border-box;
+}
+
+/* Seal & Branding Header */
+.rmutt-card-header {
+    text-align: center;
+    margin-bottom: 1.35rem;
+    position: relative;
+}
+
+.rmutt-seal-wrapper {
+    display: inline-block;
+    margin-bottom: 0.85rem;
+    position: relative;
+    transition: transform 0.25s ease;
+}
+
+.rmutt-seal-wrapper:hover {
+    transform: translateY(-2px) scale(1.02);
+}
+
+.rmutt-seal-img {
+    height: 98px;
+    width: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 12px rgba(2, 132, 199, 0.22));
+}
+
+.rmutt-univ-title {
+    font-family: var(--font-family-heading);
+    font-size: 1.28rem;
+    font-weight: 700;
+    color: var(--rmutt-navy-900);
+    line-height: 1.32;
+    letter-spacing: -0.01em;
+    margin-bottom: 0.2rem;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    min-width: 0;
+}
+
+.rmutt-univ-sub {
+    font-size: 0.76rem;
+    color: var(--rmutt-text-muted);
+    letter-spacing: 0.025em;
+    font-weight: 500;
+    margin-bottom: 0.75rem;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    min-width: 0;
+}
+
+/* Admin System Pill Badge */
+.rmutt-system-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.07) 0%, rgba(2, 132, 199, 0.12) 100%);
+    border: 1px solid rgba(15, 23, 42, 0.2);
+    color: var(--rmutt-navy-800);
+    font-size: 0.84rem;
+    font-weight: 700;
+    padding: 0.35rem 0.95rem;
+    border-radius: 9999px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    text-align: center;
+}
+
+.rmutt-system-pill i {
+    color: var(--rmutt-gold-600);
+}
+
+.rmutt-header-divider {
+    height: 1px;
+    width: 100%;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(226, 232, 240, 0.8) 15%, 
+        rgba(203, 213, 225, 0.9) 50%, 
+        rgba(226, 232, 240, 0.8) 85%, 
+        transparent 100%
+    );
+    margin: 1.2rem 0 1.15rem;
+}
+
+/* ==========================================================================
+   ROLE SELECTOR: MODERN ENTERPRISE SEGMENTED CONTROL (Staff vs HR Admin)
+   ========================================================================== */
+.rmutt-portal-toggle-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.15rem;
+    width: 100%;
+}
+
+.rmutt-segmented-control,
+.rmutt-portal-toggle {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background-color: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 4px;
+    gap: 4px;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.05);
+    position: relative;
+    box-sizing: border-box;
+}
+
+.rmutt-segmented-btn,
+.rmutt-toggle-tab {
+    flex: 1 1 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    padding: 0.62rem 1rem;
+    min-height: 42px;
+    font-family: var(--font-family-heading);
+    font-size: 0.92rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    background: transparent;
+    color: #64748b;
+    outline: none;
+    user-select: none;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.rmutt-segmented-btn i,
+.rmutt-toggle-tab i {
+    font-size: 1.05rem;
+    color: #64748b;
+    transition: all 0.22s ease;
+    display: inline-flex;
+    align-items: center;
+}
+
+.rmutt-segmented-btn:hover:not(.active),
+.rmutt-toggle-tab:hover:not(.active) {
+    background-color: rgba(255, 255, 255, 0.85);
+    color: #0f172a;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.rmutt-segmented-btn:hover:not(.active) i,
+.rmutt-toggle-tab:hover:not(.active) i {
+    color: #0f172a;
+    transform: scale(1.08);
+}
+
+.rmutt-segmented-btn.active,
+.rmutt-toggle-tab.active {
+    background: linear-gradient(135deg, #07152b 0%, #0d2244 50%, #133160 100%);
+    color: #ffffff;
+    font-weight: 600;
+    border-color: rgba(13, 34, 68, 0.35);
+    box-shadow: 
+        0 3px 10px rgba(7, 21, 43, 0.28),
+        0 1px 2px rgba(7, 21, 43, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.rmutt-segmented-btn.active i,
+.rmutt-toggle-tab.active i {
+    color: #ffffff;
+}
+
+/* Subtle gold highlight on the Admin shield icon when active */
+.rmutt-segmented-btn.active#tab-admin i,
+.rmutt-toggle-tab.active#tab-admin i {
+    color: var(--rmutt-gold-400);
+}
+
+.rmutt-segmented-btn:focus-visible,
+.rmutt-toggle-tab:focus-visible {
+    outline: 2px solid var(--rmutt-blue-500);
+    outline-offset: 2px;
+}
+
+/* Form Section Heading */
+.form-section-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 1.15rem;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.form-section-title i {
+    color: var(--rmutt-navy-700);
+    font-size: 1.1rem;
+}
+
+/* Form Fields */
+.rmutt-field-group {
+    margin-bottom: 1.15rem;
+    text-align: left;
+    position: relative;
+}
+
+.rmutt-field-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 0.45rem;
+}
+
+.rmutt-field-hint {
+    font-size: 0.74rem;
+    font-weight: normal;
+    color: var(--rmutt-text-subtle);
+}
+
+.rmutt-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.rmutt-input-icon {
+    position: absolute;
+    left: 15px;
+    font-size: 1.05rem;
+    color: #94a3b8;
+    pointer-events: none;
+    transition: color 0.2s ease;
+    z-index: 2;
+}
+
+.rmutt-form-control {
+    width: 100%;
+    height: 48px;
+    padding: 0.65rem 1rem 0.65rem 44px;
+    font-family: var(--font-family-base);
+    font-size: 0.92rem;
+    color: #0f172a;
+    background-color: var(--rmutt-surface-subtle);
+    border: 1.5px solid var(--rmutt-border);
+    border-radius: 12px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+    box-sizing: border-box;
+}
+
+.rmutt-form-control::placeholder {
+    color: #94a3b8;
+    font-size: 0.88rem;
+}
+
+.rmutt-form-control:hover {
+    border-color: #cbd5e1;
+    background-color: #ffffff;
+}
+
+.rmutt-form-control:focus {
+    background-color: #ffffff;
+    border-color: var(--rmutt-navy-700);
+    box-shadow: 0 0 0 4px rgba(16, 38, 74, 0.12);
+}
+
+.rmutt-input-wrapper:focus-within .rmutt-input-icon {
+    color: var(--rmutt-navy-700);
+}
+
+/* Password Toggle Eye Button */
+.rmutt-pwd-toggle {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #94a3b8;
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease, background-color 0.2s ease;
+    font-size: 1.05rem;
+    z-index: 3;
+}
+
+.rmutt-pwd-toggle:hover {
+    color: var(--rmutt-navy-900);
+    background-color: #f1f5f9;
+}
+
+.rmutt-pwd-toggle:focus-visible {
+    outline: 2px solid var(--rmutt-navy-700);
+    outline-offset: 1px;
+}
+
+/* Validation Errors */
+.rmutt-field-error,
+.invalid-feedback {
+    display: block;
+    font-size: 0.79rem;
+    color: var(--rmutt-danger);
+    margin-top: 0.35rem;
+    font-weight: 500;
+}
+
+.is-invalid .rmutt-form-control,
+.has-error .rmutt-form-control {
+    border-color: var(--rmutt-danger);
+    background-color: #fffaf0;
+}
+
+.is-invalid .rmutt-form-control:focus,
+.has-error .rmutt-form-control:focus {
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
+}
+
+/* Options Row */
+.rmutt-options-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.35rem;
+    font-size: 0.84rem;
+}
+
+.rmutt-checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #475569;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.84rem;
+}
+
+.rmutt-checkbox-label input[type="checkbox"] {
+    width: 17px;
+    height: 17px;
+    accent-color: var(--rmutt-navy-700);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* Primary Login Button (Executive Slate Navy) */
+.rmutt-btn-submit {
+    width: 100%;
+    height: 50px;
+    background: linear-gradient(135deg, #0c1b33 0%, #162b4f 50%, #060c18 100%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    color: #ffffff;
+    font-family: var(--font-family-heading);
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    cursor: pointer;
+    box-shadow: 
+        0 4px 14px rgba(12, 27, 51, 0.4),
+        0 2px 4px rgba(12, 27, 51, 0.25);
+    transition: all 0.22s ease;
+    letter-spacing: 0.01em;
+}
+
+.rmutt-btn-submit:hover {
+    background: linear-gradient(135deg, #162b4f 0%, #0c1b33 50%, #060c18 100%);
+    box-shadow: 
+        0 6px 20px rgba(12, 27, 51, 0.5),
+        0 2px 6px rgba(12, 27, 51, 0.3);
+    transform: translateY(-1.5px);
+    color: #ffffff;
+}
+
+.rmutt-btn-submit:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(12, 27, 51, 0.3);
+}
+
+.rmutt-btn-submit:disabled,
+.rmutt-btn-submit.is-loading {
+    background: #94a3b8;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.rmutt-spinner {
+    display: none;
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: rmutt-rotate 0.75s linear infinite;
+}
+
+.rmutt-btn-submit.is-loading .rmutt-spinner {
+    display: inline-block;
+}
+
+@keyframes rmutt-rotate {
+    to { transform: rotate(360deg); }
+}
+
+/* Notice */
+.rmutt-account-badge {
+    text-align: center;
+    font-size: 0.79rem;
+    color: var(--rmutt-text-muted);
+    margin-top: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    line-height: 1.4;
+}
+
+.rmutt-account-badge i {
+    color: var(--rmutt-navy-700);
+}
+
+/* Switch Portal Section */
+.rmutt-portal-switch-wrapper {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid #f1f5f9;
+    text-align: center;
+}
+
+.rmutt-portal-switch-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: #475569;
+    text-decoration: none;
+    padding: 0.45rem 0.95rem;
+    background-color: var(--rmutt-surface-subtle);
+    border: 1px solid var(--rmutt-border);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    max-width: 100%;
+}
+
+.rmutt-portal-switch-btn:hover {
+    color: var(--rmutt-blue-600);
+    border-color: #cbd5e1;
+    background-color: #f1f5f9;
+}
+
+/* Security Ribbon */
+.rmutt-security-ribbon {
+    margin-top: 1.15rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    font-size: 0.73rem;
+    color: #94a3b8;
+    text-align: center;
+    line-height: 1.4;
+}
+
+.rmutt-security-ribbon i {
+    color: #10b981;
+}
+
+/* Stage Footer */
+.rmutt-stage-footer {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    padding-top: 1.25rem;
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.78rem;
+    line-height: 1.55;
+}
+
+.rmutt-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.73rem;
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    margin-bottom: 0.45rem;
+}
+
+.rmutt-status-dot {
+    width: 7px;
+    height: 7px;
+    background-color: #10b981;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.35);
+    animation: pulse-dot 2s infinite;
+}
+
+@media (max-width: 576px) {
+    .rmutt-login-stage {
+        padding: 1.25rem 0.65rem 1rem;
+    }
+    .rmutt-login-card {
+        padding: 1.75rem 1rem 1.4rem;
+        border-radius: 16px;
+    }
+    .rmutt-univ-title {
+        font-size: 1.05rem;
+    }
+    .rmutt-seal-img {
+        height: 72px;
+    }
+    .rmutt-options-row {
+        flex-wrap: wrap;
+        gap: 0.4rem;
+    }
+    .rmutt-segmented-btn,
+    .rmutt-toggle-tab {
+        padding: 0.52rem 0.5rem;
+        font-size: 0.86rem;
+        gap: 0.4rem;
+    }
+    .rmutt-segmented-btn i,
+    .rmutt-toggle-tab i {
+        font-size: 0.95rem;
+    }
+    .rmutt-portal-switch-btn {
+        width: 100%;
+        justify-content: center;
+        font-size: 0.76rem;
+    }
+}

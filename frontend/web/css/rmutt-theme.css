@@ -1,0 +1,427 @@
+/* RMUTT Evaluation System - Official Royal Navy Theme */
+
+:root {
+    --rmutt-navy-950: #040d1a;
+    --rmutt-navy-900: #07152b;
+    --rmutt-navy-800: #0d2244;
+    --rmutt-navy-700: #133160;
+    --rmutt-blue-primary: #0284c7;
+    --rmutt-blue-dark: #0369a1;
+    --rmutt-blue-light: #e0f2fe;
+    --rmutt-blue-accent: #38bdf8;
+    --rmutt-gold-600: #d97706;
+    --rmutt-gold-500: #f59e0b;
+    --rmutt-gold-400: #fbbf24;
+    --rmutt-navy: #0f172a;
+    --rmutt-bg-page: #f8fafc;
+    --rmutt-card-border: #e2e8f0;
+}
+
+body {
+    background-color: var(--rmutt-bg-page);
+    font-family: 'Sarabun', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    color: #1e293b;
+}
+
+/* Navbar */
+.navbar-rmutt {
+    background: linear-gradient(135deg, var(--rmutt-navy-900) 0%, var(--rmutt-navy-800) 65%, #0f2b54 100%);
+    border-bottom: 2.5px solid var(--rmutt-gold-500);
+    box-shadow: 0 4px 20px rgba(7, 21, 43, 0.25);
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
+}
+
+.navbar-rmutt .navbar-brand {
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: #ffffff !important;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.navbar-rmutt .nav-link {
+    color: #e2e8f0 !important;
+    font-weight: 500;
+    padding: 0.5rem 0.95rem !important;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease-in-out;
+}
+
+.navbar-rmutt .nav-link:hover, .navbar-rmutt .nav-link.active {
+    background-color: rgba(255, 255, 255, 0.12);
+    color: #ffffff !important;
+}
+
+.navbar-rmutt .dropdown-menu {
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12);
+    padding: 0.5rem;
+}
+
+/* Cards & Panels */
+.card-rmutt {
+    border: 1px solid var(--rmutt-card-border);
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    background-color: #ffffff;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+
+.card-rmutt .card-header {
+    background-color: #ffffff;
+    border-bottom: 2px solid var(--rmutt-blue-light);
+    padding: 1rem 1.25rem;
+    font-weight: 600;
+    color: var(--rmutt-blue-dark);
+}
+
+.card-rmutt-highlight {
+    border-top: 4px solid var(--rmutt-blue-primary);
+}
+
+/* Tabs */
+.nav-tabs-rmutt {
+    border-bottom: 2px solid var(--rmutt-blue-light);
+    margin-bottom: 1.5rem;
+}
+
+.nav-tabs-rmutt .nav-link {
+    font-weight: 600;
+    color: #64748b;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0;
+}
+
+.nav-tabs-rmutt .nav-link.active {
+    color: var(--rmutt-blue-primary);
+    border-bottom-color: var(--rmutt-blue-primary);
+    background: transparent;
+}
+
+/* Badges */
+.badge-rmutt-blue {
+    background-color: var(--rmutt-blue-light);
+    color: var(--rmutt-blue-dark);
+    font-weight: 600;
+}
+
+/* Form Tables */
+.table-eval th {
+    background-color: #f1f5f9;
+    color: #334155;
+    font-weight: 600;
+    font-size: 0.9rem;
+    vertical-align: middle;
+}
+
+.table-eval td {
+    vertical-align: middle;
+}
+
+.score-badge {
+    font-size: 1.1rem;
+    font-weight: 700;
+    padding: 0.4rem 0.8rem;
+    border-radius: 0.5rem;
+}
+
+/* Summary Banner */
+.eval-banner {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.eval-banner h2 {
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.eval-banner .eval-cycle-box {
+    max-width: 100%;
+    white-space: normal;
+    word-break: break-word;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Auto Save Toast/Pill */
+#autosave-indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1050;
+    display: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* ==========================================================================
+   DASHBOARD COMPONENTS (EXECUTIVE & FUNCTIONAL)
+   ========================================================================== */
+
+/* 1. Executive Profile Banner */
+.dash-profile-card {
+    background: linear-gradient(135deg, var(--rmutt-navy-900) 0%, var(--rmutt-navy-800) 60%, #112d59 100%);
+    border-radius: 16px;
+    color: #ffffff;
+    padding: 1.75rem 2rem;
+    margin-bottom: 1.75rem;
+    box-shadow: 0 10px 30px -5px rgba(7, 21, 43, 0.25);
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dash-profile-card::before {
+    content: '';
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(14, 165, 233, 0.2) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.dash-profile-avatar {
+    width: 68px;
+    height: 68px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 2px solid rgba(245, 158, 11, 0.6);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.dash-pill-type {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 0.25rem 0.85rem;
+    border-radius: 9999px;
+}
+
+.dash-pill-supervisor {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #ffffff;
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 0.25rem 0.85rem;
+    border-radius: 9999px;
+    box-shadow: 0 2px 6px rgba(217, 119, 6, 0.35);
+}
+
+/* 2. Active Cycle Container */
+.dash-cycle-card {
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.06);
+    padding: 1.75rem;
+    margin-bottom: 1.75rem;
+    position: relative;
+}
+
+.dash-cycle-card .cycle-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid #f1f5f9;
+    margin-bottom: 1.5rem;
+}
+
+/* 3. 4-Stage Workflow Stepper */
+.dash-stepper {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    position: relative;
+    margin: 1.5rem 0 2rem;
+}
+
+.dash-stepper::before {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 40px;
+    right: 40px;
+    height: 3px;
+    background: #e2e8f0;
+    z-index: 1;
+}
+
+.dash-step-item {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.dash-step-circle {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 3px solid #cbd5e1;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 0.65rem;
+    transition: all 0.3s ease;
+}
+
+.dash-step-title {
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: #64748b;
+    line-height: 1.35;
+    max-width: 140px;
+}
+
+.dash-step-sub {
+    font-size: 0.74rem;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+
+/* Step States */
+.dash-step-item.is-done .dash-step-circle {
+    background: #10b981;
+    border-color: #10b981;
+    color: #ffffff;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+}
+.dash-step-item.is-done .dash-step-title {
+    color: #0f172a;
+}
+
+.dash-step-item.is-active .dash-step-circle {
+    background: var(--rmutt-blue-primary);
+    border-color: var(--rmutt-blue-primary);
+    color: #ffffff;
+    box-shadow: 0 0 0 6px rgba(2, 132, 199, 0.2);
+    animation: step-pulse 2s infinite;
+}
+.dash-step-item.is-active .dash-step-title {
+    color: var(--rmutt-blue-dark);
+    font-weight: 700;
+}
+
+@keyframes step-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.4); }
+    70% { box-shadow: 0 0 0 8px rgba(2, 132, 199, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(2, 132, 199, 0); }
+}
+
+@media (max-width: 768px) {
+    .dash-stepper {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.25rem;
+        padding-left: 1rem;
+    }
+    .dash-stepper::before {
+        top: 20px;
+        bottom: 20px;
+        left: 31px;
+        width: 3px;
+        height: auto;
+        right: auto;
+    }
+    .dash-step-item {
+        flex-direction: row;
+        gap: 1rem;
+        text-align: left;
+    }
+    .dash-step-circle {
+        margin-bottom: 0;
+    }
+    .dash-step-title {
+        max-width: none;
+    }
+}
+
+/* 4. Score Summary Box */
+.dash-score-card {
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    border: 1.5px solid #86efac;
+    border-radius: 14px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.dash-score-badge {
+    font-size: 2.25rem;
+    font-weight: 800;
+    color: #15803d;
+    line-height: 1;
+}
+
+/* 5. Supervisor Pending Task Box */
+.dash-supervisor-queue {
+    background: #fffbeb;
+    border: 1.5px solid #fde68a;
+    border-radius: 14px;
+    padding: 1.5rem;
+    margin-bottom: 1.75rem;
+}
+
+.dash-supervisor-queue h5 {
+    color: #92400e;
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+}
+
+/* 6. Guide Cards */
+.dash-guide-card {
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    height: 100%;
+    padding: 1.5rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dash-guide-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+.dash-guide-pill {
+    display: inline-block;
+    padding: 0.25rem 0.65rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 6px;
+    margin-bottom: 0.75rem;
+}

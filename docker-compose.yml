@@ -1,0 +1,89 @@
+services:
+  php:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: rmutt_php
+    restart: unless-stopped
+    volumes:
+      - ./:/var/www/html
+      - ./docker/php/custom.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+    environment:
+      - DB_HOST=${DB_HOST:-db}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_NAME=${DB_NAME:-rmutt}
+      - DB_USER=${DB_USER:-rmutt_app}
+      - DB_PASS=${DB_PASS}
+      - DATA_ENCRYPTION_KEY=${DATA_ENCRYPTION_KEY}
+      - DATA_BLIND_INDEX_KEY=${DATA_BLIND_INDEX_KEY}
+      - COOKIE_VALIDATION_KEY=${COOKIE_VALIDATION_KEY}
+      - YII_DEBUG=${YII_DEBUG:-false}
+      - YII_ENV=${YII_ENV:-prod}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - rmutt_net
+
+  nginx:
+    image: nginx:alpine
+    container_name: rmutt_nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+      - "8001:81"
+    volumes:
+      - ./:/var/www/html:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - php
+    networks:
+      - rmutt_net
+
+  db:
+    image: mysql:8.0
+    container_name: rmutt_db
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME:-rmutt}
+      MYSQL_USER: ${DB_USER:-rmutt_app}
+      MYSQL_PASSWORD: ${DB_PASS}
+    volumes:
+      - rmutt_db_data:/var/lib/mysql
+      - ./docker/mysql:/docker-entrypoint-initdb.d:ro
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u${DB_USER:-rmutt_app}", "-p${DB_PASS}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    networks:
+      - rmutt_net
+
+  phpmyadmin:
+    image: phpmyadmin:5.2
+    container_name: rmutt_phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${PHPMYADMIN_PORT:-8080}:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: ${DB_USER:-rmutt_app}
+      PMA_PASSWORD: ${DB_PASS}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - rmutt_net
+
+networks:
+  rmutt_net:
+    driver: bridge
+
+volumes:
+  rmutt_db_data:
