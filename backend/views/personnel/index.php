@@ -30,7 +30,14 @@ $divisions = $divisions ?? [];
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
         <div>
             <h4 class="fw-bold mb-1 text-dark"><i class="bi bi-people-fill text-primary me-2"></i> ข้อมูลบุคลากร</h4>
-            <p class="text-muted mb-0">จัดการรายชื่อ กำหนดประเภทบุคลากร และผูกผู้บังคับบัญชาผู้ประเมิน</p>
+            <p class="text-muted mb-0">
+                จัดการรายชื่อ กำหนดประเภทบุคลากร และผูกผู้บังคับบัญชาผู้ประเมิน
+                <?php if (!$isSuperAdmin && !empty($organizations)): ?>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-2">
+                        <i class="bi bi-building me-1"></i><?= Html::encode($organizations[0]->name_th) ?>
+                    </span>
+                <?php endif; ?>
+            </p>
         </div>
         <div class="d-flex gap-2">
             <?= Html::a('<i class="bi bi-diagram-3-fill me-1"></i> ผังสายการประเมิน', ['hierarchy', 'org_id' => $orgId, 'dept_id' => $deptId], ['class' => 'btn btn-outline-primary shadow-sm']) ?>
@@ -45,7 +52,7 @@ $divisions = $divisions ?? [];
             <input type="hidden" name="r" value="personnel/index">
             
             <!-- 1. Live Search Text Box -->
-            <div class="col-xl-3 col-md-6">
+            <div class="<?= $isSuperAdmin ? 'col-xl-3 col-md-6' : 'col-xl-4 col-md-6' ?>">
                 <label class="form-label small text-muted mb-1 fw-bold"><i class="bi bi-search me-1"></i>ค้นหาด่วน (พิมพ์กรองทันที):</label>
                 <div class="input-group input-group-sm">
                     <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-search"></i></span>
@@ -67,22 +74,24 @@ $divisions = $divisions ?? [];
                 </select>
             </div>
 
-            <!-- 3. Organization Filter (หน่วยงาน / สำนัก / คณะ) -->
-            <div class="col-xl-3 col-md-6">
-                <label class="form-label small text-muted mb-1 fw-bold"><i class="bi bi-building me-1"></i>หน่วยงาน / สำนัก:</label>
-                <select id="orgSelect" name="org_id" class="form-select form-select-sm select2-searchable" data-placeholder="-- ทุกหน่วยงาน --">
-                    <?php if ($isSuperAdmin): ?>
+            <!-- 3. Organization Filter (หน่วยงาน / สำนัก - แสดงเฉพาะ Superadmin เท่านั้น) -->
+            <?php if ($isSuperAdmin): ?>
+                <div class="col-xl-3 col-md-6">
+                    <label class="form-label small text-muted mb-1 fw-bold"><i class="bi bi-building me-1"></i>หน่วยงาน / สำนัก:</label>
+                    <select id="orgSelect" name="org_id" class="form-select form-select-sm select2-searchable" data-placeholder="-- ทุกหน่วยงาน --">
                         <option value="">-- ทุกหน่วยงาน --</option>
-                    <?php endif; ?>
-                    <?php foreach ($organizations as $org): ?>
-                        <option value="<?= $org->id ?>" <?= $orgId == $org->id ? 'selected' : '' ?>><?= Html::encode($org->name_th) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+                        <?php foreach ($organizations as $org): ?>
+                            <option value="<?= $org->id ?>" <?= $orgId == $org->id ? 'selected' : '' ?>><?= Html::encode($org->name_th) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            <?php else: ?>
+                <input type="hidden" name="org_id" value="<?= Html::encode($orgId) ?>">
+            <?php endif; ?>
 
             <!-- 4. Division Filter (ฝ่าย / กลุ่มงาน) -->
-            <div class="col-xl-2 col-md-6">
-                <label class="form-label small text-muted mb-1 fw-bold"><i class="bi bi-diagram-2 me-1"></i>ฝ่าย / งาน:</label>
+            <div class="<?= $isSuperAdmin ? 'col-xl-2 col-md-6' : 'col-xl-4 col-md-6' ?>">
+                <label class="form-label small text-muted mb-1 fw-bold"><i class="bi bi-diagram-2 me-1"></i>ฝ่าย / งาน (พิมพ์ค้นหาได้):</label>
                 <select id="deptSelect" name="dept_id" class="form-select form-select-sm select2-searchable" data-placeholder="-- ทุกฝ่าย/งาน --">
                     <option value="">-- ทุกฝ่าย/งาน --</option>
                     <?php foreach ($divisions as $div): ?>
