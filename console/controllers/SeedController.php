@@ -92,8 +92,12 @@ class SeedController extends Controller
         $superadmin->description = 'ผู้ดูแลระบบสูงสุด (Super Administrator)';
         $auth->add($superadmin);
 
+        $centralHr = $auth->createRole('central_hr');
+        $centralHr->description = 'ผู้ดูแลระบบส่วนกลาง กองบริหารงานบุคคล (Central HR Admin)';
+        $auth->add($centralHr);
+
         $admin = $auth->createRole('admin');
-        $admin->description = 'เจ้าหน้าที่งานบุคคล (HR Admin)';
+        $admin->description = 'เจ้าหน้าที่งานบุคคล / ผู้ดูแลระดับหน่วยงาน (Department Admin)';
         $auth->add($admin);
 
         $divisionHeadRole = $auth->createRole('division_head');
@@ -112,14 +116,15 @@ class SeedController extends Controller
         $personnel->description = 'บุคลากรทั่วไป (ผู้รับการประเมิน)';
         $auth->add($personnel);
 
-        // Hierarchy
+        // Hierarchy: superadmin -> central_hr -> admin -> division_head -> section_head -> supervisor
         $auth->addChild($sectionHeadRole, $supervisor);
         $auth->addChild($divisionHeadRole, $sectionHeadRole);
         $auth->addChild($admin, $divisionHeadRole);
         $auth->addChild($admin, $personnel);
-        $auth->addChild($superadmin, $admin);
+        $auth->addChild($centralHr, $admin);
+        $auth->addChild($superadmin, $centralHr);
 
-        $this->stdout("RBAC Roles created: superadmin, admin, division_head, section_head, supervisor, personnel\n", Console::FG_GREEN);
+        $this->stdout("RBAC Roles created: superadmin, central_hr, admin, division_head, section_head, supervisor, personnel\n", Console::FG_GREEN);
     }
 
     /**
@@ -315,7 +320,7 @@ class SeedController extends Controller
                 'username' => 'admin_hr',
                 'email' => 'admin_hr@rmutt.ac.th',
                 'password' => '123456',
-                'role' => 'admin',
+                'role' => 'central_hr',
                 'prefix' => 'นางสาว',
                 'first' => 'กาญจนา',
                 'last' => 'บริหารบุคคล (Central HR)',

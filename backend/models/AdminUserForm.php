@@ -39,7 +39,7 @@ class AdminUserForm extends Model
         return [
             ['create_mode', 'in', 'range' => [self::MODE_APPOINT, self::MODE_STANDALONE]],
             ['role', 'required', 'message' => 'กรุณาเลือกระดับสิทธิ์'],
-            ['role', 'in', 'range' => ['superadmin', 'admin']],
+            ['role', 'in', 'range' => ['superadmin', 'central_hr', 'admin']],
             ['department_id', 'integer'],
             ['department_id', 'exist', 'skipOnError' => true, 'targetClass' => Department::class, 'targetAttribute' => ['department_id' => 'id']],
             ['status', 'in', 'range' => [User::STATUS_ACTIVE, User::STATUS_INACTIVE]],
@@ -114,7 +114,7 @@ class AdminUserForm extends Model
 
         $auth = Yii::$app->authManager;
         $roles = array_keys($auth->getRolesByUser($personnel->user_id));
-        if (in_array('superadmin', $roles, true) || in_array('admin', $roles, true)) {
+        if (in_array('superadmin', $roles, true) || in_array('central_hr', $roles, true) || in_array('admin', $roles, true)) {
             $this->addError($attribute, 'บุคลากรท่านนี้มีสิทธิ์เป็นผู้ดูแลระบบอยู่แล้วในระบบ');
         }
     }
@@ -175,6 +175,8 @@ class AdminUserForm extends Model
         $roles = array_keys(Yii::$app->authManager->getRolesByUser($user->id));
         if (in_array('superadmin', $roles, true)) {
             $this->role = 'superadmin';
+        } elseif (in_array('central_hr', $roles, true) || $user->username === 'admin_hr' || ($user->department && $user->department->code === 'HR')) {
+            $this->role = 'central_hr';
         } else {
             $this->role = 'admin';
         }
@@ -208,13 +210,28 @@ class AdminUserForm extends Model
             }
 
             // Department scope
-            $targetDeptId = ($this->role === 'superadmin') ? null : ($this->department_id ?: $personnel->department_id);
+            if ($this->role === 'superadmin') {
+                $targetDeptId = null;
+            } elseif ($this->role === 'central_hr') {
+                $hrDept = Department::findOne(['code' => 'HR']);
+                $targetDeptId = $this->department_id ?: ($hrDept ? $hrDept->id : $personnel->department_id);
+            } else {
+                $targetDeptId = $this->department_id ?: $personnel->department_id;
+            }
             $user->department_id = $targetDeptId;
             $user->save(false);
 
-            // Assign admin role
+            // Revoke old admin roles if any to switch cleanly
+            $superRole = $auth->getRole('superadmin');
+            $centralRole = $auth->getRole('central_hr');
+            $adminRole = $auth->getRole('admin');
+            if ($superRole) $auth->revoke($superRole, $user->id);
+            if ($centralRole) $auth->revoke($centralRole, $user->id);
+            if ($adminRole) $auth->revoke($adminRole, $user->id);
+
+            // Assign new admin role
             $roleItem = $auth->getRole($this->role);
-            if ($roleItem && !$auth->getAssignment($this->role, $user->id)) {
+            if ($roleItem) {
                 $auth->assign($roleItem, $user->id);
             }
 
@@ -238,7 +255,15 @@ class AdminUserForm extends Model
         $user->username = $this->username;
         $user->display_name = $this->display_name;
         $user->email = $this->email;
-        $user->department_id = ($this->role === 'superadmin') ? null : ($this->department_id ?: null);
+
+        if ($this->role === 'superadmin') {
+            $user->department_id = null;
+        } elseif ($this->role === 'central_hr' && empty($this->department_id)) {
+            $hrDept = Department::findOne(['code' => 'HR']);
+            $user->department_id = $hrDept ? $hrDept->id : null;
+        } else {
+            $user->department_id = $this->department_id ?: null;
+        }
         $user->status = (int)$this->status;
 
         if (!empty($this->password)) {
@@ -253,10 +278,12 @@ class AdminUserForm extends Model
             return null;
         }
 
-        // Sync admin role (revoke old admin/superadmin roles first to switch cleanly)
+        // Sync admin role (revoke old admin roles first to switch cleanly)
         $superRole = $auth->getRole('superadmin');
+        $centralRole = $auth->getRole('central_hr');
         $adminRole = $auth->getRole('admin');
         if ($superRole) $auth->revoke($superRole, $user->id);
+        if ($centralRole) $auth->revoke($centralRole, $user->id);
         if ($adminRole) $auth->revoke($adminRole, $user->id);
 
         $newRoleItem = $auth->getRole($this->role);

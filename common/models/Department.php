@@ -127,7 +127,7 @@ class Department extends ActiveRecord
         if (Yii::$app->user->isGuest) {
             return false;
         }
-        if (Yii::$app->user->can('superadmin')) {
+        if (Yii::$app->user->can('superadmin') || Yii::$app->user->can('central_hr')) {
             return true;
         }
         $user = Yii::$app->user->identity;

@@ -15,9 +15,18 @@ $isUpdate = !empty($model->id);
 $deptMap = ArrayHelper::map($departments, 'id', 'name_th');
 $eligiblePersonnel = $eligiblePersonnel ?? [];
 
+$hrDeptId = null;
+foreach ($departments as $d) {
+    if (strtoupper((string)$d->code) === 'HR') {
+        $hrDeptId = $d->id;
+        break;
+    }
+}
+
 $roleItems = [
-    'admin' => 'Admin - เจ้าหน้าที่งานบุคคล / ผู้ดูแลระดับหน่วยงาน',
-    'superadmin' => 'Superadmin - ผู้ดูแลระบบสูงสุด (เข้าถึงได้ทุกส่วนของระบบ)',
+    'admin' => 'Admin - เจ้าหน้าที่งานบุคคล / ผู้ดูแลระดับหน่วยงาน (ดูแลเฉพาะหน่วยงานตนเอง)',
+    'central_hr' => 'Central HR Admin - เจ้าหน้าที่กองบริหารงานบุคคล (ส่วนกลาง / ดูแลภาพรวมทั้ง มทร.)',
+    'superadmin' => 'Superadmin - ผู้ดูแลระบบสูงสุด (ฝ่ายไอที/เทคนิค เข้าถึงได้ทุกส่วนของระบบ)',
 ];
 ?>
 
@@ -198,7 +207,7 @@ $roleItems = [
             <?= $form->field($model, 'role')->dropDownList($roleItems, [
                 'id' => 'admin-role-select',
                 'disabled' => ($isUpdate && (int)$model->id === 1),
-            ])->hint('เลือกระดับสิทธิ์: Admin ดูแลหน่วยงาน หรือ Superadmin ผู้ดูแลระบบสูงสุด') ?>
+            ])->hint('เลือกระดับสิทธิ์: Admin (ระดับหน่วยงาน), Central HR Admin (กองบุคคลส่วนกลาง), หรือ Superadmin (ฝ่ายไอที)') ?>
         </div>
 
         <div class="col-md-6" id="dept-container">
@@ -299,10 +308,19 @@ jQuery(document).ready(function($) {
         }
     });
 
-    // When role changes, if superadmin, suggest central scope
+    var hrDeptId = <?= json_encode($hrDeptId) ?>;
+
+    // When role changes
     $('#admin-role-select').on('change', function() {
-        if ($(this).val() === 'superadmin') {
+        var role = $(this).val();
+        if (role === 'superadmin') {
             $('#scope-dept-select').val('');
+        } else if (role === 'central_hr') {
+            if (hrDeptId) {
+                $('#scope-dept-select').val(hrDeptId);
+            } else {
+                $('#scope-dept-select').val('');
+            }
         } else if ($('#mode-appoint').is(':checked')) {
             updatePersonnelPreview();
         }

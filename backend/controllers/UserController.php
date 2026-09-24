@@ -54,7 +54,7 @@ class UserController extends Controller
     {
         $users = User::find()
             ->innerJoin('auth_assignment', 'auth_assignment.user_id = user.id')
-            ->where(['in', 'auth_assignment.item_name', ['superadmin', 'admin']])
+            ->where(['in', 'auth_assignment.item_name', ['superadmin', 'central_hr', 'admin']])
             ->with(['department', 'personnel.department', 'personnel.position'])
             ->orderBy(['user.id' => SORT_ASC])
             ->all();
@@ -87,7 +87,7 @@ class UserController extends Controller
         $assignedUserIds = (new \yii\db\Query())
             ->select('user_id')
             ->from('auth_assignment')
-            ->where(['in', 'item_name', ['superadmin', 'admin']])
+            ->where(['in', 'item_name', ['superadmin', 'central_hr', 'admin']])
             ->column();
 
         $eligiblePersonnel = Personnel::find()
@@ -178,10 +178,12 @@ class UserController extends Controller
         $auth = Yii::$app->authManager;
 
         if ($personnel) {
-            // Revoke admin and superadmin roles, safely preserving personnel and user record
+            // Revoke admin, central_hr, and superadmin roles, safely preserving personnel and user record
             $superRole = $auth->getRole('superadmin');
+            $centralRole = $auth->getRole('central_hr');
             $adminRole = $auth->getRole('admin');
             if ($superRole) $auth->revoke($superRole, $user->id);
+            if ($centralRole) $auth->revoke($centralRole, $user->id);
             if ($adminRole) $auth->revoke($adminRole, $user->id);
 
             // Restore base role if none remain
