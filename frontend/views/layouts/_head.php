@@ -35,10 +35,20 @@ if (!empty($this->params['meta_keywords'])) {
         ],
     );
 }
-$this->registerLinkTag(
-    [
-        'rel' => 'icon',
-        'type' => 'image/x-icon',
-        'href' => Yii::getAlias('@web/favicon.ico'),
-    ],
-);
+$favVersion = @filemtime(Yii::getAlias('@webroot/favicon.ico')) ?: time();
+$this->registerLinkTag([
+    'rel' => 'icon',
+    'type' => 'image/png',
+    'sizes' => '32x32',
+    'href' => Yii::getAlias('@web/favicon-32x32.png?v=' . $favVersion),
+]);
+$this->registerLinkTag([
+    'rel' => 'icon',
+    'type' => 'image/x-icon',
+    'href' => Yii::getAlias('@web/favicon.ico?v=' . $favVersion),
+]);
+$this->registerLinkTag([
+    'rel' => 'apple-touch-icon',
+    'sizes' => '180x180',
+    'href' => Yii::getAlias('@web/apple-touch-icon.png?v=' . $favVersion),
+]);

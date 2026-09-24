@@ -15,6 +15,8 @@ $cssVersion = @filemtime(Yii::getAlias('@webroot/css/login.css')) ?: time();
 $this->registerCssFile('@web/css/login.css?v=' . $cssVersion, [
     'depends' => [AppAsset::class],
 ]);
+
+$favVersion = @filemtime(Yii::getAlias('@webroot/favicon.ico')) ?: time();
 ?>
 <?php $this->beginPage() ?>
 <!DOCTYPE html>
@@ -24,6 +26,9 @@ $this->registerCssFile('@web/css/login.css?v=' . $cssVersion, [
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <?php $this->registerCsrfMetaTags() ?>
     <title><?= Html::encode($this->title) ?></title>
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= Yii::getAlias('@web/favicon-32x32.png?v=' . $favVersion) ?>">
+    <link rel="icon" type="image/x-icon" href="<?= Yii::getAlias('@web/favicon.ico?v=' . $favVersion) ?>">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= Yii::getAlias('@web/apple-touch-icon.png?v=' . $favVersion) ?>">
     <?php $this->head() ?>
 </head>
 <body class="rmutt-login-page">
