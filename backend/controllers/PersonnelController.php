@@ -46,30 +46,44 @@ class PersonnelController extends Controller
 
     public function actionIndex()
     {
-        $query = Personnel::find()->with(['personnelType', 'department', 'position', 'supervisor']);
+        $query = Personnel::find()->with(['personnelType', 'department.parent', 'position', 'supervisor']);
         
         $typeId = Yii::$app->request->get('type_id');
+        $orgId = Yii::$app->request->get('org_id');
         $deptId = Yii::$app->request->get('dept_id');
         $search = Yii::$app->request->get('search');
 
         $isSuperAdmin = Department::isCentralAdmin();
-        $currPersonnel = Personnel::findOne(['user_id' => Yii::$app->user->id]);
-        $myDeptId = $currPersonnel ? $currPersonnel->department_id : null;
+        $myDeptId = Department::getCurrentUserDeptId();
+        $myDepartment = $myDeptId ? Department::findOne($myDeptId) : null;
+        $myRootOrgId = $myDepartment ? ($myDepartment->parent_id ?: $myDepartment->id) : null;
         $scopedDeptIds = $myDeptId ? Department::getAllScopedDeptIds($myDeptId) : [];
 
+        // 1. Department / Organization scoping
         if (!$isSuperAdmin && $myDeptId) {
+            // Non-central admin (e.g. admin_arit) is strictly restricted to their own organization & sub-divisions
+            $orgId = $myRootOrgId;
             if ($deptId && in_array((int)$deptId, $scopedDeptIds, true)) {
                 $query->andWhere(['{{%personnel}}.department_id' => (int)$deptId]);
             } else {
                 $query->andWhere(['in', '{{%personnel}}.department_id', $scopedDeptIds]);
             }
-        } elseif ($deptId) {
-            $query->andWhere(['{{%personnel}}.department_id' => (int)$deptId]);
+        } else {
+            // Superadmin or Central HR Admin can view all or filter by specific division/org
+            if ($deptId) {
+                $query->andWhere(['{{%personnel}}.department_id' => (int)$deptId]);
+            } elseif ($orgId) {
+                $orgScopedIds = Department::getAllScopedDeptIds((int)$orgId);
+                $query->andWhere(['in', '{{%personnel}}.department_id', $orgScopedIds]);
+            }
         }
 
+        // 2. Personnel type filter
         if ($typeId) {
             $query->andWhere(['{{%personnel}}.personnel_type_id' => (int)$typeId]);
         }
+
+        // 3. Search query
         if ($search) {
             $cleanSearch = trim($search);
             $query->leftJoin('{{%positions}}', '{{%positions}}.id = {{%personnel}}.position_id');
@@ -90,20 +104,40 @@ class PersonnelController extends Controller
         $personnelList = $query->orderBy(['{{%personnel}}.id' => SORT_ASC])->all();
         $types = PersonnelType::find()->all();
 
+        // 4. Fetch Organizations and Divisions for separate dropdowns
         if ($isSuperAdmin) {
-            $departments = Department::find()->where(['status' => 1])->orderBy(['sort_order' => SORT_ASC, 'name_th' => SORT_ASC])->all();
-        } elseif ($myDeptId) {
-            $subDepts = Department::getScopedDepartments($myDeptId);
-            $departments = !empty($subDepts) ? $subDepts : ($currPersonnel->department ? [$currPersonnel->department] : []);
+            $organizations = Department::find()
+                ->where(['parent_id' => null, 'status' => 1])
+                ->orderBy(['sort_order' => SORT_ASC, 'name_th' => SORT_ASC])
+                ->all();
+
+            $divisionsQuery = Department::find()
+                ->where(['status' => 1])
+                ->andWhere(['not', ['parent_id' => null]])
+                ->orderBy(['parent_id' => SORT_ASC, 'sort_order' => SORT_ASC, 'name_th' => SORT_ASC]);
+
+            if ($orgId) {
+                $divisionsQuery->andWhere(['parent_id' => (int)$orgId]);
+            }
+            $divisions = $divisionsQuery->all();
         } else {
-            $departments = Department::find()->where(['status' => 1])->all();
+            // Strictly limited to this admin's organization and its divisions
+            $organizations = $myRootOrgId 
+                ? Department::find()->where(['id' => $myRootOrgId, 'status' => 1])->all() 
+                : [];
+            $divisions = $myRootOrgId 
+                ? Department::find()->where(['parent_id' => $myRootOrgId, 'status' => 1])->orderBy(['sort_order' => SORT_ASC, 'name_th' => SORT_ASC])->all() 
+                : [];
         }
 
         return $this->render('index', [
             'personnelList' => $personnelList,
             'types' => $types,
-            'departments' => $departments,
+            'organizations' => $organizations,
+            'divisions' => $divisions,
+            'isSuperAdmin' => $isSuperAdmin,
             'typeId' => $typeId,
+            'orgId' => $orgId,
             'deptId' => $deptId,
             'search' => $search,
         ]);
@@ -116,8 +150,7 @@ class PersonnelController extends Controller
         $model->is_supervisor = 0;
 
         $isSuperAdmin = Department::isCentralAdmin();
-        $currPersonnel = Personnel::findOne(['user_id' => Yii::$app->user->id]);
-        $myDeptId = $currPersonnel ? $currPersonnel->department_id : null;
+        $myDeptId = Department::getCurrentUserDeptId();
         $scopedDeptIds = $myDeptId ? Department::getAllScopedDeptIds($myDeptId) : [];
 
         if ($model->load(Yii::$app->request->post())) {
@@ -164,8 +197,7 @@ class PersonnelController extends Controller
     {
         $model = $this->findModel($id);
         $isSuperAdmin = Department::isCentralAdmin();
-        $currPersonnel = Personnel::findOne(['user_id' => Yii::$app->user->id]);
-        $myDeptId = $currPersonnel ? $currPersonnel->department_id : null;
+        $myDeptId = Department::getCurrentUserDeptId();
         $scopedDeptIds = $myDeptId ? Department::getAllScopedDeptIds($myDeptId) : [];
 
         if ($model->load(Yii::$app->request->post())) {
@@ -189,8 +221,8 @@ class PersonnelController extends Controller
     public function actionHierarchy()
     {
         $isSuperAdmin = Department::isCentralAdmin();
-        $currPersonnel = Personnel::findOne(['user_id' => Yii::$app->user->id]);
-        $myDept = $currPersonnel ? $currPersonnel->department : null;
+        $myDeptId = Department::getCurrentUserDeptId();
+        $myDept = $myDeptId ? Department::findOne($myDeptId) : null;
 
         // 1. Determine Current Organization (Parent Department or Self if root)
         $orgId = Yii::$app->request->get('org_id');
@@ -262,10 +294,9 @@ class PersonnelController extends Controller
         $personnelList = $query->orderBy(['position_level' => SORT_DESC, 'id' => SORT_ASC])->all();
 
         // 4. All main organizations (for Superadmin switcher if needed)
-        $allOrgs = Department::find()
-            ->where(['parent_id' => null, 'status' => 1])
-            ->orderBy(['sort_order' => SORT_ASC, 'name_th' => SORT_ASC])
-            ->all();
+        $allOrgs = $isSuperAdmin 
+            ? Department::find()->where(['parent_id' => null, 'status' => 1])->orderBy(['sort_order' => SORT_ASC, 'name_th' => SORT_ASC])->all()
+            : ($currentOrg ? [$currentOrg] : []);
 
         return $this->render('hierarchy', [
             'personnelList' => $personnelList,
@@ -294,8 +325,7 @@ class PersonnelController extends Controller
         $personnel = $this->findModel($id);
 
         $isSuperAdmin = Department::isCentralAdmin();
-        $currPersonnel = Personnel::findOne(['user_id' => Yii::$app->user->id]);
-        $myDeptId = $currPersonnel ? $currPersonnel->department_id : null;
+        $myDeptId = Department::getCurrentUserDeptId();
         $scopedDeptIds = $myDeptId ? Department::getAllScopedDeptIds($myDeptId) : [];
 
         if (!$isSuperAdmin && $myDeptId && !in_array((int)$personnel->department_id, $scopedDeptIds, true)) {
@@ -351,8 +381,7 @@ class PersonnelController extends Controller
     public function actionImport()
     {
         $isSuperAdmin = Department::isCentralAdmin();
-        $currPersonnel = Personnel::findOne(['user_id' => Yii::$app->user->id]);
-        $myDeptId = $currPersonnel ? $currPersonnel->department_id : null;
+        $myDeptId = Department::getCurrentUserDeptId();
 
         $targetDeptId = Yii::$app->request->post('target_dept_id', $myDeptId);
         if (!$isSuperAdmin && $myDeptId) {
@@ -378,7 +407,10 @@ class PersonnelController extends Controller
             }
         }
 
-        $departments = $isSuperAdmin ? Department::find()->all() : ($currPersonnel && $currPersonnel->department ? [$currPersonnel->department] : Department::find()->all());
+        $scopedDeptIds = $myDeptId ? Department::getAllScopedDeptIds($myDeptId) : [];
+        $departments = $isSuperAdmin 
+            ? Department::find()->all() 
+            : Department::find()->where(['id' => $scopedDeptIds, 'status' => 1])->all();
 
         return $this->render('import', [
             'departments' => $departments,
@@ -390,11 +422,11 @@ class PersonnelController extends Controller
     protected function findModel($id)
     {
         if (($model = Personnel::findOne($id)) !== null) {
-            $isSuperAdmin = Yii::$app->user->can('superadmin');
+            $isSuperAdmin = Yii::$app->user->can('superadmin') || Department::isCentralAdmin();
             if (!$isSuperAdmin) {
-                $currPersonnel = Personnel::findOne(['user_id' => Yii::$app->user->id]);
-                if ($currPersonnel && $currPersonnel->department_id) {
-                    $scopedDeptIds = Department::getAllScopedDeptIds($currPersonnel->department_id);
+                $myDeptId = Department::getCurrentUserDeptId();
+                if ($myDeptId) {
+                    $scopedDeptIds = Department::getAllScopedDeptIds($myDeptId);
                     if ($model->department_id && !in_array((int)$model->department_id, $scopedDeptIds, true)) {
                         throw new ForbiddenHttpException('คุณไม่มีสิทธิ์เข้าถึงหรือแก้ไขข้อมูลบุคลากรนอกสังกัดที่รับผิดชอบ');
                     }

@@ -84,8 +84,7 @@ class SiteController extends Controller
     public function actionIndex()
     {
         $isSuperAdmin = Department::isCentralAdmin();
-        $currPersonnel = Personnel::findOne(['user_id' => Yii::$app->user->id]);
-        $myDeptId = $currPersonnel ? $currPersonnel->department_id : null;
+        $myDeptId = Department::getCurrentUserDeptId();
         $myDepartment = $myDeptId ? Department::findOne($myDeptId) : null;
 
         $activeCycle = EvaluationCycle::find()

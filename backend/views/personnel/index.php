@@ -6,12 +6,23 @@ use yii\helpers\Url;
 /** @var yii\web\View $this */
 /** @var common\models\Personnel[] $personnelList */
 /** @var common\models\PersonnelType[] $types */
-/** @var common\models\Department[] $departments */
+/** @var common\models\Department[] $organizations */
+/** @var common\models\Department[] $divisions */
+/** @var bool $isSuperAdmin */
 /** @var int|null $typeId */
+/** @var int|null $orgId */
 /** @var int|null $deptId */
 /** @var string|null $search */
 
 $this->title = 'ข้อมูลบุคลากร';
+
+$orgId = $orgId ?? null;
+$deptId = $deptId ?? null;
+$typeId = $typeId ?? null;
+$search = $search ?? null;
+$isSuperAdmin = $isSuperAdmin ?? true;
+$organizations = $organizations ?? [];
+$divisions = $divisions ?? [];
 ?>
 
 <div class="personnel-index py-3">
@@ -22,53 +33,66 @@ $this->title = 'ข้อมูลบุคลากร';
             <p class="text-muted mb-0">จัดการรายชื่อ กำหนดประเภทบุคลากร และผูกผู้บังคับบัญชาผู้ประเมิน</p>
         </div>
         <div class="d-flex gap-2">
-            <?= Html::a('<i class="bi bi-diagram-3-fill me-1"></i> ผังสายการประเมิน', ['hierarchy', 'dept_id' => $deptId], ['class' => 'btn btn-outline-primary shadow-sm']) ?>
-            <?= Html::a('<i class="bi bi-file-earmark-arrow-up-fill me-1"></i> นำเข้าข้อมูล (CSV)', ['import', 'target_dept_id' => $deptId], ['class' => 'btn btn-outline-success shadow-sm']) ?>
+            <?= Html::a('<i class="bi bi-diagram-3-fill me-1"></i> ผังสายการประเมิน', ['hierarchy', 'org_id' => $orgId, 'dept_id' => $deptId], ['class' => 'btn btn-outline-primary shadow-sm']) ?>
+            <?= Html::a('<i class="bi bi-file-earmark-arrow-up-fill me-1"></i> นำเข้าข้อมูล (CSV)', ['import', 'target_dept_id' => $deptId ?: $orgId], ['class' => 'btn btn-outline-success shadow-sm']) ?>
             <?= Html::a('<i class="bi bi-person-plus-fill me-1"></i> เพิ่มบุคลากรใหม่', ['create'], ['class' => 'btn btn-primary shadow-sm']) ?>
         </div>
     </div>
 
     <!-- Filters Card -->
     <div class="card card-rmutt p-3 shadow-sm mb-4">
-        <form id="personnelFilterForm" method="get" action="<?= Url::to(['index']) ?>" class="row g-2 align-items-center">
+        <form id="personnelFilterForm" method="get" action="<?= Url::to(['index']) ?>" class="row g-2 align-items-end">
             <input type="hidden" name="r" value="personnel/index">
             
-            <!-- Live Search Text Box -->
-            <div class="col-md-4">
-                <label class="form-label small text-muted mb-1 fw-bold"><i class="bi bi-search me-1"></i>ค้นหาด่วน (พิมพ์เพื่อกรองทันที):</label>
+            <!-- 1. Live Search Text Box -->
+            <div class="col-xl-3 col-md-6">
+                <label class="form-label small text-muted mb-1 fw-bold"><i class="bi bi-search me-1"></i>ค้นหาด่วน (พิมพ์กรองทันที):</label>
                 <div class="input-group input-group-sm">
                     <span class="input-group-text bg-white text-muted border-end-0"><i class="bi bi-search"></i></span>
-                    <input type="text" id="personnelSearchInput" name="search" class="form-control border-start-0 ps-0" placeholder="พิมพ์ชื่อ-สกุล, รหัส, ตำแหน่ง, อีเมล..." value="<?= Html::encode($search) ?>" autocomplete="off">
+                    <input type="text" id="personnelSearchInput" name="search" class="form-control border-start-0 ps-0" placeholder="พิมพ์ชื่อ-สกุล, รหัส, ตำแหน่ง..." value="<?= Html::encode($search) ?>" autocomplete="off">
                     <?php if (!empty($search)): ?>
                         <button class="btn btn-outline-secondary border-start-0" type="button" id="clearSearchBtn" title="ล้างคำค้นหา"><i class="bi bi-x-lg"></i></button>
                     <?php endif; ?>
                 </div>
             </div>
 
-            <!-- Personnel Type Searchable Select -->
-            <div class="col-md-3">
+            <!-- 2. Personnel Type Filter -->
+            <div class="col-xl-2 col-md-6">
                 <label class="form-label small text-muted mb-1 fw-bold"><i class="bi bi-person-badge me-1"></i>ประเภทบุคลากร:</label>
-                <select id="typeSelect" name="type_id" class="form-select form-select-sm select2-searchable" data-placeholder="-- ทุกประเภทบุคลากร --">
-                    <option value="">-- ทุกประเภทบุคลากร --</option>
+                <select id="typeSelect" name="type_id" class="form-select form-select-sm select2-searchable" data-placeholder="-- ทุกประเภท --">
+                    <option value="">-- ทุกประเภท --</option>
                     <?php foreach ($types as $t): ?>
                         <option value="<?= $t->id ?>" <?= $typeId == $t->id ? 'selected' : '' ?>><?= Html::encode($t->name_th) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
 
-            <!-- Department Searchable Select -->
-            <div class="col-md-3">
-                <label class="form-label small text-muted mb-1 fw-bold"><i class="bi bi-building me-1"></i>ฝ่าย / สังกัด (พิมพ์ค้นหาได้):</label>
-                <select id="deptSelect" name="dept_id" class="form-select form-select-sm select2-searchable" data-placeholder="-- ทุกฝ่าย/สังกัด --">
-                    <option value="">-- ทุกฝ่าย/สังกัด --</option>
-                    <?php foreach ($departments as $d): ?>
-                        <option value="<?= $d->id ?>" <?= $deptId == $d->id ? 'selected' : '' ?>><?= Html::encode($d->name_th) ?></option>
+            <!-- 3. Organization Filter (หน่วยงาน / สำนัก / คณะ) -->
+            <div class="col-xl-3 col-md-6">
+                <label class="form-label small text-muted mb-1 fw-bold"><i class="bi bi-building me-1"></i>หน่วยงาน / สำนัก:</label>
+                <select id="orgSelect" name="org_id" class="form-select form-select-sm select2-searchable" data-placeholder="-- ทุกหน่วยงาน --">
+                    <?php if ($isSuperAdmin): ?>
+                        <option value="">-- ทุกหน่วยงาน --</option>
+                    <?php endif; ?>
+                    <?php foreach ($organizations as $org): ?>
+                        <option value="<?= $org->id ?>" <?= $orgId == $org->id ? 'selected' : '' ?>><?= Html::encode($org->name_th) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
 
-            <!-- Actions -->
-            <div class="col-md-2 d-flex align-items-end pt-md-3">
+            <!-- 4. Division Filter (ฝ่าย / กลุ่มงาน) -->
+            <div class="col-xl-2 col-md-6">
+                <label class="form-label small text-muted mb-1 fw-bold"><i class="bi bi-diagram-2 me-1"></i>ฝ่าย / งาน:</label>
+                <select id="deptSelect" name="dept_id" class="form-select form-select-sm select2-searchable" data-placeholder="-- ทุกฝ่าย/งาน --">
+                    <option value="">-- ทุกฝ่าย/งาน --</option>
+                    <?php foreach ($divisions as $div): ?>
+                        <option value="<?= $div->id ?>" data-parent="<?= $div->parent_id ?>" <?= $deptId == $div->id ? 'selected' : '' ?>><?= Html::encode($div->name_th) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <!-- 5. Action Buttons -->
+            <div class="col-xl-2 col-md-12">
                 <div class="d-flex gap-2 w-100">
                     <button type="submit" class="btn btn-sm btn-primary flex-grow-1"><i class="bi bi-funnel-fill me-1"></i> กรอง</button>
                     <?= Html::a('ล้าง', ['index'], ['class' => 'btn btn-sm btn-outline-secondary', 'title' => 'ล้างตัวกรองทั้งหมด']) ?>
@@ -81,8 +105,8 @@ $this->title = 'ข้อมูลบุคลากร';
     <div class="d-flex justify-content-between align-items-center mb-2 px-1">
         <div class="small text-muted">
             <span id="matchCountText">แสดงทั้งหมด <strong><?= count($personnelList) ?></strong> รายการ</span>
-            <?php if (!empty($search) || !empty($typeId) || !empty($deptId)): ?>
-                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-2"><i class="bi bi-funnel me-1"></i>กรองจากฐานข้อมูล</span>
+            <?php if (!empty($search) || !empty($typeId) || !empty($deptId) || (!empty($orgId) && $isSuperAdmin)): ?>
+                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-2"><i class="bi bi-funnel me-1"></i>กรองข้อมูล</span>
             <?php endif; ?>
         </div>
         <div id="liveSearchStatus" class="small text-primary fw-medium" style="display:none;">
@@ -132,9 +156,16 @@ $this->title = 'ข้อมูลบุคลากร';
                                     <small class="text-muted"><?= Html::encode($p->position ? ($p->position->level_label ?: '-') : '-') ?></small>
                                 </td>
                                 <td>
-                                    <div class="personnel-dept"><?= Html::encode($p->department ? $p->department->name_th : '-') ?></div>
+                                    <div class="personnel-dept fw-medium text-dark"><?= Html::encode($p->department ? $p->department->name_th : '-') ?></div>
+                                    <?php if ($p->department && $p->department->parent): ?>
+                                        <small class="text-primary d-block" style="font-size: 0.78rem;">
+                                            <i class="bi bi-building me-1"></i><?= Html::encode($p->department->parent->name_th) ?>
+                                        </small>
+                                    <?php endif; ?>
                                     <?php if (!empty($p->work_unit)): ?>
-                                        <small class="text-muted"><i class="bi bi-briefcase me-1"></i><?= Html::encode($p->work_unit) ?></small>
+                                        <small class="text-muted d-block" style="font-size: 0.75rem;">
+                                            <i class="bi bi-briefcase me-1"></i><?= Html::encode($p->work_unit) ?>
+                                        </small>
                                     <?php endif; ?>
                                 </td>
                                 <td>
@@ -171,7 +202,7 @@ $this->title = 'ข้อมูลบุคลากร';
 $clearUrl = Url::to(['index']);
 $js = <<<JS
 $(document).ready(function() {
-    // 1. Initialize Select2 on Searchable Dropdowns (Type & Department)
+    // 1. Initialize Select2 on Searchable Dropdowns
     if ($.fn.select2) {
         $('.select2-searchable').select2({
             theme: 'bootstrap-5',
@@ -182,8 +213,31 @@ $(document).ready(function() {
             }
         });
 
-        // Trigger filter automatically when dropdown selection changes
-        $('.select2-searchable').on('change', function() {
+        // Cascading Organization -> Division filter for Superadmin
+        $('#orgSelect').on('change', function() {
+            const selectedOrgId = $(this).val();
+            const deptSelect = $('#deptSelect');
+            
+            if (selectedOrgId) {
+                deptSelect.find('option').each(function() {
+                    const parentId = $(this).data('parent');
+                    if (!parentId || parentId == selectedOrgId) {
+                        $(this).prop('disabled', false).show();
+                    } else {
+                        $(this).prop('disabled', true).hide();
+                        if ($(this).is(':selected')) {
+                            deptSelect.val('');
+                        }
+                    }
+                });
+            } else {
+                deptSelect.find('option').prop('disabled', false).show();
+            }
+            deptSelect.trigger('change.select2');
+            $('#personnelFilterForm').submit();
+        });
+
+        $('#deptSelect, #typeSelect').on('change', function() {
             $('#personnelFilterForm').submit();
         });
     }

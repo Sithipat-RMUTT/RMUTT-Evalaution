@@ -229,8 +229,11 @@ class AuditAllViewsController extends Controller
             $out = $perCtrl->renderPartial('@backend/views/personnel/index', [
                 'personnelList' => Personnel::find()->all(),
                 'types' => PersonnelType::find()->all(),
-                'departments' => Department::find()->all(),
+                'organizations' => Department::find()->where(['parent_id' => null])->all(),
+                'divisions' => Department::find()->where(['not', ['parent_id' => null]])->all(),
+                'isSuperAdmin' => true,
                 'typeId' => null,
+                'orgId' => null,
                 'deptId' => null,
                 'search' => null,
             ]);

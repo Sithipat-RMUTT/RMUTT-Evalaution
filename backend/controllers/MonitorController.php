@@ -48,8 +48,8 @@ class MonitorController extends Controller
     public function actionIndex()
     {
         $isSuperAdmin = Department::isCentralAdmin();
-        $currPersonnel = \common\models\Personnel::findOne(['user_id' => Yii::$app->user->id]);
-        $myDeptId = $currPersonnel ? $currPersonnel->department_id : null;
+        $myDeptId = Department::getCurrentUserDeptId();
+        $myDepartment = $myDeptId ? Department::findOne($myDeptId) : null;
 
         $cycleId = Yii::$app->request->get('cycle_id');
         $deptId = Yii::$app->request->get('dept_id');
@@ -89,7 +89,7 @@ class MonitorController extends Controller
             $departments = Department::find()->where(['status' => 1])->orderBy(['sort_order' => SORT_ASC, 'name_th' => SORT_ASC])->all();
         } elseif ($myDeptId) {
             $subDepts = Department::getScopedDepartments($myDeptId);
-            $departments = !empty($subDepts) ? $subDepts : ($currPersonnel->department ? [$currPersonnel->department] : []);
+            $departments = !empty($subDepts) ? $subDepts : ($myDepartment ? [$myDepartment] : []);
         } else {
             $departments = Department::find()->where(['status' => 1])->all();
         }

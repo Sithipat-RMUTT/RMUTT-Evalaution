@@ -43,8 +43,7 @@ class ReportController extends Controller
         $cycles = EvaluationCycle::find()->orderBy(['fiscal_year' => SORT_DESC])->all();
 
         $isSuperadmin = Department::isCentralAdmin();
-        $currentPersonnel = \common\models\Personnel::findOne(['user_id' => Yii::$app->user->id]);
-        $userDeptId = $currentPersonnel ? $currentPersonnel->department_id : null;
+        $userDeptId = Department::getCurrentUserDeptId();
         $scopedDeptIds = $userDeptId ? Department::getAllScopedDeptIds($userDeptId) : [];
         $isScoped = !$isSuperadmin && !empty($scopedDeptIds);
 

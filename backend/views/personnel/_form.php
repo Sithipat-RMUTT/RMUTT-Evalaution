@@ -13,7 +13,20 @@ use common\models\Personnel;
 /** @var yii\bootstrap5\ActiveForm $form */
 
 $types = ArrayHelper::map(PersonnelType::find()->all(), 'id', 'name_th');
-$departments = ArrayHelper::map(Department::find()->all(), 'id', 'name_th');
+
+$isSuperAdmin = Department::isCentralAdmin();
+$myDeptId = Department::getCurrentUserDeptId();
+$scopedDeptIds = $myDeptId ? Department::getAllScopedDeptIds($myDeptId) : [];
+
+if (!$isSuperAdmin && $myDeptId) {
+    $deptModels = Department::find()->where(['id' => $scopedDeptIds, 'status' => 1])->orderBy(['sort_order' => SORT_ASC, 'name_th' => SORT_ASC])->all();
+} else {
+    $deptModels = Department::find()->where(['status' => 1])->orderBy(['sort_order' => SORT_ASC, 'name_th' => SORT_ASC])->all();
+}
+$departments = ArrayHelper::map($deptModels, 'id', function($d) {
+    return $d->parent ? $d->name_th . ' (' . $d->parent->name_th . ')' : $d->name_th;
+});
+
 $positions = ArrayHelper::map(Position::find()->all(), 'id', 'name_th');
 $supervisors = ArrayHelper::map(
     Personnel::find()->where(['is_supervisor' => 1])->all(),
