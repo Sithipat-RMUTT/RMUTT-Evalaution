@@ -268,15 +268,6 @@ class TemplateBuilderController extends Controller
             throw new NotFoundHttpException('ไม่พบหน่วยงานหรือประเภทบุคลากรที่ระบุ');
         }
 
-        // If already customized and active, go straight to builder
-        $existing = EvaluationTemplate::find()
-            ->where(['department_id' => $targetDeptId, 'personnel_type_id' => $pt->id, 'status' => 1])
-            ->one();
-
-        if ($existing) {
-            return $this->redirect(['builder', 'id' => $existing->id]);
-        }
-
         // Find central master template
         $centralTemplate = EvaluationTemplate::find()
             ->where(['personnel_type_id' => $pt->id])
@@ -295,25 +286,91 @@ class TemplateBuilderController extends Controller
             return $this->redirect(['index']);
         }
 
+        // Check if template already exists for this department & personnel type
+        $existing = EvaluationTemplate::find()
+            ->where(['department_id' => $targetDeptId, 'personnel_type_id' => $pt->id])
+            ->one();
+
+        // If already customized and active with active version, go straight to builder
+        if ($existing && $existing->status == 1 && $existing->activeVersion) {
+            return $this->redirect(['builder', 'id' => $existing->id]);
+        }
+
         $tx = Yii::$app->db->beginTransaction();
         try {
-            // 1. Create Department Template
-            $newTemplate = new EvaluationTemplate();
-            $newTemplate->personnel_type_id = $pt->id;
-            $newTemplate->department_id = $targetDeptId;
-            $deptCode = strtoupper($targetDept->code ?: 'DEPT');
-            $newTemplate->code = "TPL_{$deptCode}_{$pt->code}_" . date('Y');
-            $newTemplate->name_th = "แบบประเมินผลการปฏิบัติงาน {$pt->name_th} ({$targetDept->name_th})";
-            $newTemplate->description = "แบบประเมินเฉพาะของ {$targetDept->name_th} ปรับปรุงจากแบบฟอร์มมาตรฐานกลาง มหาวิทยาลัย";
-            $newTemplate->status = 1;
-            $newTemplate->is_default = 0;
-            $newTemplate->save(false);
+            // 1. Setup or Reactivate Department Template
+            if ($existing) {
+                $targetTemplate = $existing;
+                $targetTemplate->status = 1;
+                $targetTemplate->name_th = "แบบประเมินผลการปฏิบัติงาน {$pt->name_th} ({$targetDept->name_th})";
+                $targetTemplate->save(false);
+            } else {
+                $targetTemplate = new EvaluationTemplate();
+                $targetTemplate->personnel_type_id = $pt->id;
+                $targetTemplate->department_id = $targetDeptId;
+                $deptCode = strtoupper($targetDept->code ?: 'DEPT');
+                $baseCode = "TPL_{$deptCode}_{$pt->code}_" . date('Y');
+                $code = $baseCode;
+                $suffix = 1;
+                while (EvaluationTemplate::find()->where(['code' => $code])->exists()) {
+                    $code = $baseCode . '_' . date('His') . ($suffix > 1 ? "_{$suffix}" : '');
+                    $suffix++;
+                }
+                $targetTemplate->code = $code;
+                $targetTemplate->name_th = "แบบประเมินผลการปฏิบัติงาน {$pt->name_th} ({$targetDept->name_th})";
+                $targetTemplate->description = "แบบประเมินเฉพาะของ {$targetDept->name_th} ปรับปรุงจากแบบฟอร์มมาตรฐานกลาง มหาวิทยาลัย";
+                $targetTemplate->status = 1;
+                $targetTemplate->is_default = 0;
+                $targetTemplate->save(false);
+            }
 
-            // 2. Clone Version
-            $newVersion = new TemplateVersion();
-            $newVersion->evaluation_template_id = $newTemplate->id;
-            $newVersion->version_number = 1;
-            $newVersion->version_label = 'v1.0';
+            // 2. Prepare Version
+            $existingVersionIds = TemplateVersion::find()
+                ->select('id')
+                ->where(['evaluation_template_id' => $targetTemplate->id])
+                ->column();
+
+            $hasEvals = !empty($existingVersionIds) && Evaluation::find()
+                ->where(['template_version_id' => $existingVersionIds])
+                ->exists();
+
+            if ($hasEvals) {
+                // If historical evaluations exist, create a new version without deleting previous ones
+                TemplateVersion::updateAll(['is_active' => 0], ['evaluation_template_id' => $targetTemplate->id]);
+                $maxVer = (int)TemplateVersion::find()->where(['evaluation_template_id' => $targetTemplate->id])->max('version_number');
+                $newVersionNumber = $maxVer + 1;
+                $newVersion = new TemplateVersion();
+                $newVersion->evaluation_template_id = $targetTemplate->id;
+                $newVersion->version_number = $newVersionNumber;
+                $newVersion->version_label = 'v' . number_format($newVersionNumber, 1);
+            } else {
+                // If no evaluations ever used this template, clean up unused draft versions for clean slate
+                if (!empty($existingVersionIds)) {
+                    foreach (TemplateVersion::find()->where(['evaluation_template_id' => $targetTemplate->id])->all() as $oldVer) {
+                        $secIds = EvaluationSection::find()->select('id')->where(['template_version_id' => $oldVer->id])->column();
+                        if (!empty($secIds)) {
+                            $itemIds = EvaluationItem::find()->select('id')->where(['evaluation_section_id' => $secIds])->column();
+                            if (!empty($itemIds)) {
+                                EvaluationCriteria::deleteAll(['evaluation_item_id' => $itemIds]);
+                                EvaluationItem::deleteAll(['id' => $itemIds]);
+                            }
+                            EvaluationSection::deleteAll(['id' => $secIds]);
+                        }
+                        $compIds = CompetencyDefinition::find()->select('id')->where(['template_version_id' => $oldVer->id])->column();
+                        if (!empty($compIds)) {
+                            CompetencyLevel::deleteAll(['competency_definition_id' => $compIds]);
+                            CompetencyDefinition::deleteAll(['id' => $compIds]);
+                        }
+                        CycleTemplateMapping::deleteAll(['template_version_id' => $oldVer->id]);
+                        $oldVer->delete();
+                    }
+                }
+                $newVersion = new TemplateVersion();
+                $newVersion->evaluation_template_id = $targetTemplate->id;
+                $newVersion->version_number = 1;
+                $newVersion->version_label = 'v1.0';
+            }
+
             $newVersion->is_active = 1;
             $newVersion->effective_from = date('Y-m-d');
             $newVersion->total_weight = $centralVersion->total_weight;
@@ -373,18 +430,18 @@ class TemplateBuilderController extends Controller
                 $newComp->competency_code = $comp->competency_code;
                 $newComp->competency_type = $comp->competency_type;
                 $newComp->name_th = $comp->name_th;
-                $newComp->description = $comp->description;
-                $newComp->weight = $comp->weight;
-                $newComp->target_score = $comp->target_score;
+                $newComp->name_en = $comp->name_en;
+                $newComp->definition = $comp->definition;
+                $newComp->expected_level = $comp->expected_level;
                 $newComp->sort_order = $comp->sort_order;
                 $newComp->save(false);
 
                 foreach ($comp->levels as $lvl) {
                     $newLvl = new CompetencyLevel();
-                    $newLvl->competency_id = $newComp->id;
-                    $newLvl->level_number = $lvl->level_number;
-                    $newLvl->behavioral_indicator = $lvl->behavioral_indicator;
-                    $newLvl->score_value = $lvl->score_value;
+                    $newLvl->competency_definition_id = $newComp->id;
+                    $newLvl->level_value = $lvl->level_value;
+                    $newLvl->level_label = $lvl->level_label;
+                    $newLvl->behavior_description = $lvl->behavior_description;
                     $newLvl->save(false);
                 }
             }
@@ -429,7 +486,7 @@ class TemplateBuilderController extends Controller
                 }
             }
 
-            AuditLog::log('customize_template_for_dept', 'EvaluationTemplate', $newTemplate->id, null, [
+            AuditLog::log('customize_template_for_dept', 'EvaluationTemplate', $targetTemplate->id, null, [
                 'department_id' => $targetDeptId,
                 'personnel_type_id' => $pt->id,
             ]);
@@ -437,7 +494,7 @@ class TemplateBuilderController extends Controller
             $tx->commit();
 
             Yii::$app->session->setFlash('success', "นำแบบประเมินส่วนกลางมาสร้างเป็นแบบเฉพาะของ {$targetDept->name_th} เรียบร้อยแล้ว ท่านสามารถปรับแต่งตัวชี้วัด (KPI) ค่าน้ำหนัก และเกณฑ์คะแนนตามภาระงานจริงของหน่วยงานได้ทันที");
-            return $this->redirect(['builder', 'id' => $newTemplate->id]);
+            return $this->redirect(['builder', 'id' => $targetTemplate->id]);
         } catch (\Throwable $e) {
             $tx->rollBack();
             Yii::$app->session->setFlash('danger', 'เกิดข้อผิดพลาดในการสร้างแบบประเมินเฉพาะหน่วยงาน: ' . $e->getMessage());

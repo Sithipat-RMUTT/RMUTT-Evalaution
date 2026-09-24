@@ -484,4 +484,128 @@ class AuditAllViewsController extends Controller
         }
         $this->stdout("======================================================\n\n", Console::FG_CYAN);
     }
+
+    public function actionTestCustomize()
+    {
+        $this->stdout("\n=======================================================\n", Console::FG_CYAN);
+        $this->stdout("   TESTING TEMPLATE CUSTOMIZE & RESET WORKFLOW        \n", Console::FG_YELLOW, Console::BOLD);
+        $this->stdout("=======================================================\n\n", Console::FG_CYAN);
+
+        // Mock session and web environment
+        Yii::$app->set('session', new \yii\web\Session());
+        Yii::$app->session->open();
+        Yii::$app->set('response', new \yii\web\Response());
+        Yii::$app->set('request', new \yii\web\Request([
+            'url' => '/index.php',
+            'scriptUrl' => '/index.php',
+            'baseUrl' => '',
+            'cookieValidationKey' => 'audit_secret_key_12345678901234567890',
+            'enableCsrfValidation' => false,
+        ]));
+        Yii::$app->set('user', [
+            'class' => 'yii\web\User',
+            'identityClass' => 'common\models\User',
+            'enableSession' => false,
+        ]);
+
+        $user = \common\models\User::findOne(['username' => 'admin_arit']);
+        if (!$user) {
+            $this->stdout("✖ admin_arit user not found!\n", Console::FG_RED);
+            return 1;
+        }
+        Yii::$app->user->setIdentity($user);
+
+        $ctrl = new \backend\controllers\TemplateBuilderController('template-builder', Yii::$app);
+
+        $personnelTypes = PersonnelType::find()->all();
+        $allPassed = true;
+
+        foreach ($personnelTypes as $pt) {
+            $this->stdout("▶ Testing Personnel Type: {$pt->name_th} ({$pt->code})...\n", Console::FG_CYAN);
+
+            // Step 1: Customize
+            try {
+                $response = $ctrl->actionCustomize($pt->id, 1);
+                $flashDanger = Yii::$app->session->getFlash('danger');
+                if ($flashDanger) {
+                    throw new \Exception("Flash danger: " . $flashDanger);
+                }
+
+                $tpl = \common\models\EvaluationTemplate::find()
+                    ->where(['department_id' => 1, 'personnel_type_id' => $pt->id, 'status' => 1])
+                    ->one();
+
+                if (!$tpl) {
+                    throw new \Exception("Custom template was not created or not active");
+                }
+
+                $ver = $tpl->activeVersion;
+                if (!$ver) {
+                    throw new \Exception("Template active version is missing");
+                }
+
+                $secCount = count($ver->sections);
+                $compCount = count($ver->competencyDefinitions);
+                $this->stdout("   ✔ Customize: SUCCESS (Tpl ID: {$tpl->id}, Code: {$tpl->code}, Sections: {$secCount}, Comps: {$compCount})\n", Console::FG_GREEN);
+            } catch (\Throwable $e) {
+                $this->stdout("   ✖ Customize FAILED: " . $e->getMessage() . "\n", Console::FG_RED, Console::BOLD);
+                $allPassed = false;
+                continue;
+            }
+
+            // Step 2: Reset to central
+            try {
+                $ctrl->actionResetToCentral($pt->id, 1);
+                $flashDanger = Yii::$app->session->getFlash('danger');
+                if ($flashDanger) {
+                    throw new \Exception("Flash danger: " . $flashDanger);
+                }
+
+                $tplAfterReset = \common\models\EvaluationTemplate::find()
+                    ->where(['department_id' => 1, 'personnel_type_id' => $pt->id, 'status' => 1])
+                    ->one();
+
+                if ($tplAfterReset) {
+                    throw new \Exception("Template should be inactive after reset");
+                }
+                $this->stdout("   ✔ Reset to Central: SUCCESS\n", Console::FG_GREEN);
+            } catch (\Throwable $e) {
+                $this->stdout("   ✖ Reset to Central FAILED: " . $e->getMessage() . "\n", Console::FG_RED, Console::BOLD);
+                $allPassed = false;
+                continue;
+            }
+
+            // Step 3: Re-Customize (Test for duplicate key collision Bug 1062)
+            try {
+                $ctrl->actionCustomize($pt->id, 1);
+                $flashDanger = Yii::$app->session->getFlash('danger');
+                if ($flashDanger) {
+                    throw new \Exception("Flash danger: " . $flashDanger);
+                }
+
+                $tplReactivated = \common\models\EvaluationTemplate::find()
+                    ->where(['department_id' => 1, 'personnel_type_id' => $pt->id, 'status' => 1])
+                    ->one();
+
+                if (!$tplReactivated) {
+                    throw new \Exception("Template should be reactivated on second customize");
+                }
+                $this->stdout("   ✔ Re-Customize after Reset: SUCCESS (Tpl ID: {$tplReactivated->id}, No duplicate error!)\n", Console::FG_GREEN);
+            } catch (\Throwable $e) {
+                $this->stdout("   ✖ Re-Customize FAILED (Duplicate Key?): " . $e->getMessage() . "\n", Console::FG_RED, Console::BOLD);
+                $allPassed = false;
+                continue;
+            }
+
+            // Cleanup: reset back to central so user can start from central as default
+            $ctrl->actionResetToCentral($pt->id, 1);
+        }
+
+        $this->stdout("\n=======================================================\n", $allPassed ? Console::FG_GREEN : Console::FG_RED);
+        $this->stdout($allPassed ? " ALL CUSTOMIZE & RESET TESTS PASSED PERFECTLY!\n" : " SOME TESTS FAILED!\n", $allPassed ? Console::FG_GREEN : Console::FG_RED, Console::BOLD);
+        $this->stdout("=======================================================\n\n", $allPassed ? Console::FG_GREEN : Console::FG_RED);
+
+        return $allPassed ? 0 : 1;
+    }
 }
+
