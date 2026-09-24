@@ -11,28 +11,41 @@ use yii\helpers\Html;
 $items = [];
 
 if (!Yii::$app->user->isGuest) {
+    $controllerId = Yii::$app->controller ? Yii::$app->controller->id : '';
+    $isSuperAdmin = Yii::$app->user->can('superadmin');
     $isCentral = \common\models\Department::isCentralAdmin();
+    $canManageTemplate = Yii::$app->user->can('admin') || $isSuperAdmin || Yii::$app->user->can('central_hr') || Yii::$app->user->can('division_head');
 
     $items = [
         [
             'label' => '<i class="bi bi-speedometer2 me-1"></i> Dashboard',
             'url' => ['/site/index'],
+            'active' => $controllerId === 'site',
         ],
         [
             'label' => '<i class="bi bi-ui-checks-grid me-1 text-primary"></i> ติดตามการประเมิน',
             'url' => ['/monitor/index'],
+            'active' => $controllerId === 'monitor',
         ],
         [
             'label' => '<i class="bi bi-bar-chart-line-fill me-1 text-success"></i> รายงานสรุปผล/คะแนน',
             'url' => ['/report/index'],
+            'active' => $controllerId === 'report',
         ],
         [
             'label' => '<i class="bi bi-people-fill me-1"></i> ข้อมูลบุคลากร',
             'url' => ['/personnel/index'],
+            'active' => $controllerId === 'personnel',
         ],
     ];
 
-    $isSuperAdmin = Yii::$app->user->can('superadmin');
+    if ($canManageTemplate) {
+        $items[] = [
+            'label' => '<i class="bi bi-file-earmark-ruled-fill me-1 text-warning"></i> จัดการแบบประเมิน',
+            'url' => ['/template-builder/index'],
+            'active' => $controllerId === 'template-builder',
+        ];
+    }
 
     if ($isCentral || $isSuperAdmin) {
         $systemItems = [];
@@ -40,15 +53,13 @@ if (!Yii::$app->user->isGuest) {
             $systemItems[] = [
                 'label' => '<i class="bi bi-shield-lock-fill me-1 text-primary"></i> จัดการผู้ดูแลระบบ (Admin Users)',
                 'url' => ['/user/index'],
+                'active' => $controllerId === 'user',
             ];
         }
         $systemItems[] = [
             'label' => '<i class="bi bi-calendar3 me-1"></i> รอบการประเมิน',
             'url' => ['/cycle/index'],
-        ];
-        $systemItems[] = [
-            'label' => '<i class="bi bi-file-earmark-ruled-fill me-1 text-warning"></i> จัดการแบบประเมิน (Builder)',
-            'url' => ['/template-builder/index'],
+            'active' => $controllerId === 'cycle',
         ];
 
         $items[] = [

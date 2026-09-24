@@ -393,7 +393,45 @@ class AuditAllViewsController extends Controller
                 $passed++;
             }
         } catch (\Throwable $e) {
-            $this->stdout("   ✖ [Backend] template-builder ERROR: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine() . "\n", Console::FG_RED, Console::BOLD);
+            $this->stdout("   ✖ [Backend] template-builder views ERROR: " . $e->getMessage() . "\n", Console::FG_RED, Console::BOLD);
+            $errors++;
+        }
+
+        // Backend Header Layout Test (Superadmin & Agency Admin)
+        try {
+            Yii::$app->set('user', [
+                'class' => \yii\web\User::class,
+                'identityClass' => \common\models\User::class,
+                'enableSession' => false,
+            ]);
+            $view = new \yii\web\View();
+            $adminUser = \common\models\User::findByUsername('admin');
+            if ($adminUser) {
+                Yii::$app->user->login($adminUser);
+                $headerAdmin = $view->render('@backend/views/layouts/_header.php');
+                if (strpos($headerAdmin, 'จัดการแบบประเมิน') !== false && strpos($headerAdmin, 'จัดการระบบ') !== false) {
+                    $this->stdout("   ✔ [Backend Layout] _header.php (Superadmin): OK (All menus visible)\n", Console::FG_GREEN);
+                    $passed++;
+                } else {
+                    throw new \Exception("Superadmin header missing required menus");
+                }
+            }
+
+            $deptUser = \common\models\User::findByUsername('admin_arit');
+            if ($deptUser) {
+                Yii::$app->user->login($deptUser);
+                $canAdmin = Yii::$app->user->can('admin');
+                $roles = array_keys(Yii::$app->authManager->getRolesByUser($deptUser->id));
+                $headerDept = $view->render('@backend/views/layouts/_header.php');
+                if (strpos($headerDept, 'จัดการแบบประเมิน') !== false && strpos($headerDept, 'template-builder') !== false) {
+                    $this->stdout("   ✔ [Backend Layout] _header.php (Agency Admin admin_arit): OK (จัดการแบบประเมิน menu visible!)\n", Console::FG_GREEN);
+                    $passed++;
+                } else {
+                    throw new \Exception("Agency Admin header missing 'จัดการแบบประเมิน'. User ID: {$deptUser->id}");
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->stdout("   ✖ [Backend Layout] _header.php ERROR: " . $e->getMessage() . "\n", Console::FG_RED, Console::BOLD);
             $errors++;
         }
 

@@ -26,7 +26,7 @@ class CycleController extends Controller
                 'rules' => [
                     [
                         'allow' => true,
-                        'roles' => ['admin', 'superadmin'],
+                        'roles' => ['admin', 'superadmin', 'central_hr'],
                     ],
                 ],
             ],

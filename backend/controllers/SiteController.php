@@ -53,7 +53,7 @@ class SiteController extends Controller
                     [
                         'actions' => ['index'],
                         'allow' => true,
-                        'roles' => ['admin', 'superadmin', 'division_head'],
+                        'roles' => ['admin', 'superadmin', 'central_hr', 'division_head'],
                     ],
                 ],
             ],

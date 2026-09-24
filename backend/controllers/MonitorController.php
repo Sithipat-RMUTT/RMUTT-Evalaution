@@ -31,7 +31,7 @@ class MonitorController extends Controller
                 'rules' => [
                     [
                         'allow' => true,
-                        'roles' => ['admin', 'superadmin', 'division_head'],
+                        'roles' => ['admin', 'superadmin', 'central_hr', 'division_head'],
                     ],
                 ],
             ],
