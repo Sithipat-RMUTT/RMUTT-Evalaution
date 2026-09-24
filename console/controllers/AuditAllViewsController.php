@@ -320,20 +320,35 @@ class AuditAllViewsController extends Controller
         // Backend Template Builder Views
         $builderCtrl = new \backend\controllers\TemplateBuilderController('template-builder', Yii::$app);
         try {
-            $templates = \common\models\EvaluationTemplate::find()->all();
             $departments = Department::find()->all();
             $personnelTypes = PersonnelType::find()->all();
+            $activeCycle = EvaluationCycle::findOne(['status' => EvaluationCycle::STATUS_ACTIVE]) ?: EvaluationCycle::find()->one();
+
+            $templateMatrix = [];
+            foreach ($personnelTypes as $pt) {
+                $centralTpl = \common\models\EvaluationTemplate::find()->where(['personnel_type_id' => $pt->id])->one();
+                $templateMatrix[$pt->id] = [
+                    'personnelType' => $pt,
+                    'customTemplate' => null,
+                    'centralTemplate' => $centralTpl,
+                    'activeTemplate' => $centralTpl,
+                    'isCustom' => false,
+                    'version' => $centralTpl ? $centralTpl->activeVersion : null,
+                    'itemCount' => 3,
+                    'compCount' => 5,
+                    'weightStr' => ['70%', '30%'],
+                ];
+            }
 
             $out = $builderCtrl->renderPartial('@backend/views/template-builder/index', [
-                'templates' => $templates,
-                'departments' => $departments,
-                'personnelTypes' => $personnelTypes,
-                'selectedDepartmentId' => null,
-                'selectedPersonnelTypeId' => null,
-                'activeCycle' => EvaluationCycle::findOne(['status' => EvaluationCycle::STATUS_ACTIVE]),
+                'adminCtx' => ['isSuperAdmin' => true, 'departmentId' => null, 'department' => null],
+                'isSuperAdmin' => true,
                 'targetDepartment' => $departments[0] ?? null,
                 'targetDeptId' => $departments[0]->id ?? null,
-                'assignedTemplates' => [],
+                'departments' => $departments,
+                'activeCycle' => $activeCycle,
+                'personnelTypes' => $personnelTypes,
+                'templateMatrix' => $templateMatrix,
             ]);
             $this->stdout("   ✔ [Backend] template-builder/index.php: OK\n", Console::FG_GREEN);
             $passed++;
@@ -369,6 +384,7 @@ class AuditAllViewsController extends Controller
             $this->stdout("   ✔ [Backend] user/create.php: OK\n", Console::FG_GREEN);
             $passed++;
 
+            $templates = \common\models\EvaluationTemplate::find()->all();
             if (!empty($templates)) {
                 $tpl = $templates[0];
                 $ver = $tpl->activeVersion ?: $tpl->versions[0];

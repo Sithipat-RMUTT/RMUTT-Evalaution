@@ -51,6 +51,7 @@ class TemplateBuilderController extends Controller
                     'delete' => ['POST'],
                     'clone' => ['POST'],
                     'assign-template' => ['POST'],
+                    'reset-to-central' => ['POST'],
                     'save-section' => ['POST'],
                     'delete-section' => ['POST'],
                     'save-item' => ['POST'],
@@ -154,243 +155,396 @@ class TemplateBuilderController extends Controller
     }
 
     /**
-     * List all templates grouped/filtered by Department
+     * List templates scoped strictly to department (or central master templates for superadmin)
      */
-    public function actionIndex($department_id = null, $personnel_type_id = null)
+    public function actionIndex($department_id = null)
     {
         $adminCtx = $this->getAdminContext();
         $isSuperAdmin = $adminCtx['isSuperAdmin'];
         $myDeptId = $adminCtx['departmentId'];
 
-        $query = EvaluationTemplate::find()
-            ->with(['department', 'personnelType', 'activeVersion.sections.items', 'activeVersion.competencyDefinitions'])
-            ->orderBy([
-                new \yii\db\Expression('CASE WHEN department_id IS NULL THEN 0 ELSE 1 END'),
-                'department_id' => SORT_ASC,
-                'personnel_type_id' => SORT_ASC,
-                'id' => SORT_ASC,
-            ]);
-
-        // If Department Admin, scope to own department or default templates
-        $scopedDeptIds = $myDeptId ? Department::getAllScopedDeptIds($myDeptId) : [];
-        if (!$isSuperAdmin && $myDeptId) {
-            $query->andWhere(['or', ['in', 'department_id', $scopedDeptIds], ['department_id' => null]]);
+        if ($isSuperAdmin) {
+            $targetDeptId = ($department_id !== null && $department_id !== '' && $department_id !== '0' && $department_id !== 'central')
+                ? (int)$department_id
+                : null; // null = central master templates
+            $targetDepartment = $targetDeptId ? Department::findOne($targetDeptId) : null;
+            $departments = Department::find()->where(['status' => 1])->orderBy(['sort_order' => SORT_ASC, 'name_th' => SORT_ASC])->all();
         } else {
-            if ($department_id !== null && $department_id !== '') {
-                if ($department_id === '0' || $department_id === 'default') {
-                    $query->andWhere(['department_id' => null]);
-                } else {
-                    $query->andWhere(['department_id' => $department_id]);
-                }
-            }
+            // Agency Admin: STRICTLY THEIR OWN DEPARTMENT ONLY!
+            $targetDeptId = (int)$myDeptId;
+            $targetDepartment = $targetDeptId ? Department::findOne($targetDeptId) : null;
+            $departments = []; // No cross-department switching for agency admin!
         }
 
-        if ($personnel_type_id !== null && $personnel_type_id !== '') {
-            $query->andWhere(['personnel_type_id' => $personnel_type_id]);
-        }
-
-        $templates = $query->all();
-        $departments = $isSuperAdmin 
-            ? Department::find()->where(['status' => 1])->orderBy(['sort_order' => SORT_ASC, 'name_th' => SORT_ASC])->all() 
-            : ($myDeptId ? Department::getScopedDepartments($myDeptId) : []);
-        $personnelTypes = PersonnelType::find()->all();
-
-        // 1. Active Evaluation Cycle
         $activeCycle = EvaluationCycle::find()
             ->where(['status' => [EvaluationCycle::STATUS_ACTIVE, EvaluationCycle::STATUS_EVALUATION]])
             ->orderBy(['id' => SORT_DESC])
             ->one() ?: EvaluationCycle::find()->orderBy(['id' => SORT_DESC])->one();
 
-        // 2. Determine target department for agency template configuration
-        if ($isSuperAdmin) {
-            $targetDeptId = ($department_id !== null && $department_id !== '' && $department_id !== 'default') 
-                ? (int)$department_id 
-                : ($myDeptId ?: (!empty($departments) ? $departments[0]->id : null));
-        } else {
-            $targetDeptId = ($department_id && in_array((int)$department_id, $scopedDeptIds, true)) 
-                ? (int)$department_id 
-                : $myDeptId;
-        }
-        $targetDepartment = $targetDeptId ? Department::findOne($targetDeptId) : null;
+        $personnelTypes = PersonnelType::find()->orderBy(['id' => SORT_ASC])->all();
 
-        // 3. Build active template assignments per personnel type for target department
-        $assignedTemplates = [];
+        // Build 4 Personnel Types Matrix
+        $templateMatrix = [];
         foreach ($personnelTypes as $pt) {
-            $mapping = null;
-            if ($activeCycle && $targetDepartment) {
-                $mapping = CycleTemplateMapping::findOne([
-                    'evaluation_cycle_id' => $activeCycle->id,
-                    'department_id' => $targetDepartment->id,
-                    'personnel_type_id' => $pt->id,
-                ]);
-                if (!$mapping && $targetDepartment->parent_id) {
-                    $mapping = CycleTemplateMapping::findOne([
-                        'evaluation_cycle_id' => $activeCycle->id,
-                        'department_id' => $targetDepartment->parent_id,
-                        'personnel_type_id' => $pt->id,
-                    ]);
-                }
+            $customTemplate = null;
+            if ($targetDepartment) {
+                $customTemplate = EvaluationTemplate::find()
+                    ->where(['department_id' => $targetDepartment->id, 'personnel_type_id' => $pt->id, 'status' => 1])
+                    ->with(['activeVersion.sections.items', 'activeVersion.competencyDefinitions'])
+                    ->one();
             }
 
-            if ($mapping && $mapping->templateVersion) {
-                $currentVersion = $mapping->templateVersion;
-                $currentTemplate = $currentVersion->evaluationTemplate;
-                $isCustom = ($currentTemplate && $currentTemplate->department_id == $targetDepartment->id);
-                $isInherited = ($mapping->department_id != $targetDepartment->id);
-            } else {
-                $masterMapping = $activeCycle ? CycleTemplateMapping::find()
-                    ->where(['evaluation_cycle_id' => $activeCycle->id, 'personnel_type_id' => $pt->id])
-                    ->andWhere(['or', ['department_id' => null], ['department_id' => 0]])
-                    ->one() : null;
+            $centralTemplate = EvaluationTemplate::find()
+                ->where(['personnel_type_id' => $pt->id])
+                ->andWhere(['or', ['department_id' => null], ['is_default' => 1]])
+                ->with(['activeVersion.sections.items', 'activeVersion.competencyDefinitions'])
+                ->orderBy(['id' => SORT_ASC])
+                ->one();
 
-                if ($masterMapping && $masterMapping->templateVersion) {
-                    $currentVersion = $masterMapping->templateVersion;
-                    $currentTemplate = $currentVersion->evaluationTemplate;
-                } else {
-                    $currentTemplate = EvaluationTemplate::find()
-                        ->where(['personnel_type_id' => $pt->id, 'status' => 1])
-                        ->orderBy(['is_default' => SORT_DESC, 'id' => SORT_ASC])
-                        ->one();
-                    $currentVersion = $currentTemplate ? $currentTemplate->activeVersion : null;
+            $activeTemplate = $customTemplate ?: $centralTemplate;
+            $version = $activeTemplate ? ($activeTemplate->activeVersion ?: ($activeTemplate->versions ? $activeTemplate->versions[0] : null)) : null;
+
+            $itemCount = 0;
+            $weightStr = [];
+            if ($version) {
+                foreach ($version->sections as $s) {
+                    $itemCount += count($s->items);
+                    $weightStr[] = number_format($s->weight, 0) . '%';
                 }
-                $isCustom = false;
-                $isInherited = false;
             }
+            $compCount = $version ? count($version->competencyDefinitions) : 0;
 
-            // Available templates for this personnel type
-            $availableTemplates = EvaluationTemplate::find()
-                ->where(['personnel_type_id' => $pt->id, 'status' => 1])
-                ->andWhere(['or',
-                    ['department_id' => null],
-                    ['department_id' => $targetDepartment ? $targetDepartment->id : 0],
-                    ($targetDepartment && $targetDepartment->parent_id ? ['department_id' => $targetDepartment->parent_id] : ['department_id' => -1])
-                ])
-                ->with(['department', 'activeVersion.sections.items', 'activeVersion.competencyDefinitions'])
-                ->orderBy(['department_id' => SORT_DESC, 'is_default' => SORT_DESC, 'id' => SORT_ASC])
-                ->all();
-
-            $assignedTemplates[$pt->id] = [
+            $templateMatrix[$pt->id] = [
                 'personnelType' => $pt,
-                'currentTemplate' => $currentTemplate,
-                'currentVersion' => $currentVersion,
-                'isCustom' => $isCustom,
-                'isInherited' => $isInherited,
-                'availableTemplates' => $availableTemplates,
+                'customTemplate' => $customTemplate,
+                'centralTemplate' => $centralTemplate,
+                'activeTemplate' => $activeTemplate,
+                'isCustom' => ($customTemplate !== null),
+                'version' => $version,
+                'itemCount' => $itemCount,
+                'compCount' => $compCount,
+                'weightStr' => $weightStr,
             ];
         }
 
         return $this->render('index', [
-            'templates' => $templates,
-            'departments' => $departments,
-            'personnelTypes' => $personnelTypes,
-            'selectedDepartmentId' => $department_id,
-            'selectedPersonnelTypeId' => $personnel_type_id,
             'adminCtx' => $adminCtx,
-            'activeCycle' => $activeCycle,
+            'isSuperAdmin' => $isSuperAdmin,
             'targetDepartment' => $targetDepartment,
             'targetDeptId' => $targetDeptId,
-            'assignedTemplates' => $assignedTemplates,
+            'departments' => $departments,
+            'activeCycle' => $activeCycle,
+            'personnelTypes' => $personnelTypes,
+            'templateMatrix' => $templateMatrix,
         ]);
     }
 
     /**
-     * Assign or switch the evaluation template for a department and personnel type.
+     * Agency Admin customizes criteria for their department by taking the central master template.
      */
-    public function actionAssignTemplate()
+    public function actionCustomize($personnel_type_id, $department_id = null)
     {
         $adminCtx = $this->getAdminContext();
-        $departmentId = Yii::$app->request->post('department_id');
-        $personnelTypeId = Yii::$app->request->post('personnel_type_id');
-        $templateId = Yii::$app->request->post('template_id');
-        $updateExisting = (bool)Yii::$app->request->post('update_existing', 1);
+        $isSuperAdmin = $adminCtx['isSuperAdmin'];
+        $myDeptId = $adminCtx['departmentId'];
 
-        if (!$departmentId || !$personnelTypeId || !$templateId) {
-            Yii::$app->session->setFlash('danger', 'กรุณาระบุข้อมูลให้ครบถ้วน');
-            return $this->redirect(['index', 'department_id' => $departmentId]);
+        $targetDeptId = ($isSuperAdmin && $department_id) ? (int)$department_id : (int)$myDeptId;
+
+        if (!$targetDeptId) {
+            Yii::$app->session->setFlash('danger', 'ไม่พบข้อมูลหน่วยงานของคุณ');
+            return $this->redirect(['index']);
         }
 
-        // Permission check
-        if (!$adminCtx['isSuperAdmin']) {
-            $scopedDeptIds = $adminCtx['departmentId'] ? Department::getAllScopedDeptIds($adminCtx['departmentId']) : [];
-            if (!in_array((int)$departmentId, $scopedDeptIds, true)) {
-                throw new ForbiddenHttpException('คุณไม่มีสิทธิ์กำหนดแบบประเมินสำหรับหน่วยงานอื่น');
+        if (!$isSuperAdmin) {
+            $scopedDeptIds = $myDeptId ? Department::getAllScopedDeptIds($myDeptId) : [];
+            if (!in_array($targetDeptId, $scopedDeptIds, true)) {
+                throw new ForbiddenHttpException('คุณไม่มีสิทธิ์ปรับแต่งแบบประเมินของหน่วยงานอื่น');
             }
         }
 
-        $template = EvaluationTemplate::findOne($templateId);
-        if (!$template) {
-            throw new NotFoundHttpException('ไม่พบแบบประเมินที่เลือก');
+        $targetDept = Department::findOne($targetDeptId);
+        $pt = PersonnelType::findOne($personnel_type_id);
+        if (!$targetDept || !$pt) {
+            throw new NotFoundHttpException('ไม่พบหน่วยงานหรือประเภทบุคลากรที่ระบุ');
         }
 
-        if ($template->personnel_type_id != $personnelTypeId) {
-            Yii::$app->session->setFlash('danger', 'แบบประเมินที่เลือกไม่ตรงกับประเภทบุคลากร');
-            return $this->redirect(['index', 'department_id' => $departmentId]);
-        }
-
-        $version = $template->activeVersion ?: ($template->versions ? $template->versions[0] : null);
-        if (!$version) {
-            Yii::$app->session->setFlash('danger', 'แบบประเมินที่เลือกไม่มีเวอร์ชันที่เปิดใช้งาน');
-            return $this->redirect(['index', 'department_id' => $departmentId]);
-        }
-
-        $targetDept = Department::findOne($departmentId);
-        $pt = PersonnelType::findOne($personnelTypeId);
-
-        $activeCycle = EvaluationCycle::find()
-            ->where(['status' => [EvaluationCycle::STATUS_ACTIVE, EvaluationCycle::STATUS_EVALUATION, EvaluationCycle::STATUS_DRAFT]])
-            ->orderBy(['id' => SORT_DESC])
+        // If already customized and active, go straight to builder
+        $existing = EvaluationTemplate::find()
+            ->where(['department_id' => $targetDeptId, 'personnel_type_id' => $pt->id, 'status' => 1])
             ->one();
 
-        if ($activeCycle) {
-            $mapping = CycleTemplateMapping::findOne([
-                'evaluation_cycle_id' => $activeCycle->id,
-                'department_id' => $departmentId,
-                'personnel_type_id' => $personnelTypeId,
-            ]);
-            if (!$mapping) {
-                $mapping = new CycleTemplateMapping();
-                $mapping->evaluation_cycle_id = $activeCycle->id;
-                $mapping->department_id = $departmentId;
-                $mapping->personnel_type_id = $personnelTypeId;
-                $mapping->created_at = time();
-            }
-            $mapping->template_version_id = $version->id;
-            $mapping->save(false);
+        if ($existing) {
+            return $this->redirect(['builder', 'id' => $existing->id]);
+        }
 
-            $updatedEvalCount = 0;
-            if ($updateExisting) {
-                $scopedTargetDeptIds = Department::getAllScopedDeptIds((int)$departmentId);
+        // Find central master template
+        $centralTemplate = EvaluationTemplate::find()
+            ->where(['personnel_type_id' => $pt->id])
+            ->andWhere(['or', ['department_id' => null], ['is_default' => 1]])
+            ->orderBy(['id' => SORT_ASC])
+            ->one();
+
+        if (!$centralTemplate) {
+            Yii::$app->session->setFlash('danger', 'ไม่พบแบบฟอร์มมาตรฐานกลางของมหาวิทยาลัย');
+            return $this->redirect(['index']);
+        }
+
+        $centralVersion = $centralTemplate->activeVersion ?: ($centralTemplate->versions ? $centralTemplate->versions[0] : null);
+        if (!$centralVersion) {
+            Yii::$app->session->setFlash('danger', 'แบบฟอร์มมาตรฐานกลางยังไม่มีเวอร์ชัน');
+            return $this->redirect(['index']);
+        }
+
+        $tx = Yii::$app->db->beginTransaction();
+        try {
+            // 1. Create Department Template
+            $newTemplate = new EvaluationTemplate();
+            $newTemplate->personnel_type_id = $pt->id;
+            $newTemplate->department_id = $targetDeptId;
+            $deptCode = strtoupper($targetDept->code ?: 'DEPT');
+            $newTemplate->code = "TPL_{$deptCode}_{$pt->code}_" . date('Y');
+            $newTemplate->name_th = "แบบประเมินผลการปฏิบัติงาน {$pt->name_th} ({$targetDept->name_th})";
+            $newTemplate->description = "แบบประเมินเฉพาะของ {$targetDept->name_th} ปรับปรุงจากแบบฟอร์มมาตรฐานกลาง มหาวิทยาลัย";
+            $newTemplate->status = 1;
+            $newTemplate->is_default = 0;
+            $newTemplate->save(false);
+
+            // 2. Clone Version
+            $newVersion = new TemplateVersion();
+            $newVersion->evaluation_template_id = $newTemplate->id;
+            $newVersion->version_number = 1;
+            $newVersion->version_label = 'v1.0';
+            $newVersion->is_active = 1;
+            $newVersion->effective_from = date('Y-m-d');
+            $newVersion->total_weight = $centralVersion->total_weight;
+            $newVersion->score_formula_config = $centralVersion->score_formula_config;
+            $newVersion->created_by = Yii::$app->user->id;
+            $newVersion->save(false);
+
+            // 3. Clone Sections & Items & Criteria
+            foreach ($centralVersion->sections as $sec) {
+                $newSec = new EvaluationSection();
+                $newSec->template_version_id = $newVersion->id;
+                $newSec->section_code = $sec->section_code;
+                $newSec->name_th = $sec->name_th;
+                $newSec->description = $sec->description;
+                $newSec->weight = $sec->weight;
+                $newSec->sort_order = $sec->sort_order;
+                $newSec->section_type = $sec->section_type;
+                $newSec->is_evaluator_fill = $sec->is_evaluator_fill;
+                $newSec->save(false);
+
+                foreach ($sec->items as $item) {
+                    $newItem = new EvaluationItem();
+                    $newItem->evaluation_section_id = $newSec->id;
+                    $newItem->item_code = $item->item_code;
+                    $newItem->name_th = $item->name_th;
+                    $newItem->description = $item->description;
+                    $newItem->input_type = $item->input_type;
+                    $newItem->max_score = $item->max_score;
+                    $newItem->max_weight = $item->max_weight;
+                    $newItem->default_weight = $item->default_weight;
+                    $newItem->expected_level = $item->expected_level;
+                    $newItem->sort_order = $item->sort_order;
+                    $newItem->is_required = $item->is_required;
+                    $newItem->requires_evidence = $item->requires_evidence;
+                    $newItem->evidence_instruction = $item->evidence_instruction;
+                    $newItem->options_data = $item->options_data;
+                    $newItem->save(false);
+
+                    foreach ($item->criteria as $crit) {
+                        $newCrit = new EvaluationCriteria();
+                        $newCrit->evaluation_item_id = $newItem->id;
+                        $newCrit->level_value = $crit->level_value;
+                        $newCrit->level_label = $crit->level_label;
+                        $newCrit->score_value = $crit->score_value;
+                        $newCrit->description = $crit->description;
+                        $newCrit->condition_rule = $crit->condition_rule;
+                        $newCrit->sort_order = $crit->sort_order;
+                        $newCrit->save(false);
+                    }
+                }
+            }
+
+            // 4. Clone Competencies
+            foreach ($centralVersion->competencyDefinitions as $comp) {
+                $newComp = new CompetencyDefinition();
+                $newComp->template_version_id = $newVersion->id;
+                $newComp->competency_code = $comp->competency_code;
+                $newComp->competency_type = $comp->competency_type;
+                $newComp->name_th = $comp->name_th;
+                $newComp->description = $comp->description;
+                $newComp->weight = $comp->weight;
+                $newComp->target_score = $comp->target_score;
+                $newComp->sort_order = $comp->sort_order;
+                $newComp->save(false);
+
+                foreach ($comp->levels as $lvl) {
+                    $newLvl = new CompetencyLevel();
+                    $newLvl->competency_id = $newComp->id;
+                    $newLvl->level_number = $lvl->level_number;
+                    $newLvl->behavioral_indicator = $lvl->behavioral_indicator;
+                    $newLvl->score_value = $lvl->score_value;
+                    $newLvl->save(false);
+                }
+            }
+
+            // 5. Map in CycleTemplateMapping for active cycle
+            $activeCycle = EvaluationCycle::find()
+                ->where(['status' => [EvaluationCycle::STATUS_ACTIVE, EvaluationCycle::STATUS_EVALUATION, EvaluationCycle::STATUS_DRAFT]])
+                ->orderBy(['id' => SORT_DESC])
+                ->one();
+
+            if ($activeCycle) {
+                $mapping = CycleTemplateMapping::findOne([
+                    'evaluation_cycle_id' => $activeCycle->id,
+                    'department_id' => $targetDeptId,
+                    'personnel_type_id' => $pt->id,
+                ]);
+                if (!$mapping) {
+                    $mapping = new CycleTemplateMapping();
+                    $mapping->evaluation_cycle_id = $activeCycle->id;
+                    $mapping->department_id = $targetDeptId;
+                    $mapping->personnel_type_id = $pt->id;
+                    $mapping->created_at = time();
+                }
+                $mapping->template_version_id = $newVersion->id;
+                $mapping->save(false);
+
+                // Update unfinalized draft evaluations
+                $scopedTargetDeptIds = Department::getAllScopedDeptIds($targetDeptId);
                 $evalsToUpdate = Evaluation::find()
                     ->innerJoinWith('personnel')
                     ->where([
                         '{{%evaluations}}.evaluation_cycle_id' => $activeCycle->id,
-                        '{{%personnel}}.personnel_type_id' => $personnelTypeId,
+                        '{{%personnel}}.personnel_type_id' => $pt->id,
                         '{{%evaluations}}.status' => [Evaluation::STATUS_SELF_ASSESSMENT, Evaluation::STATUS_DRAFT],
                     ])
                     ->andWhere(['in', '{{%personnel}}.department_id', $scopedTargetDeptIds])
                     ->all();
 
-                foreach ($evalsToUpdate as $eval) {
-                    $eval->template_version_id = $version->id;
-                    $eval->save(false);
-                    $updatedEvalCount++;
+                foreach ($evalsToUpdate as $ev) {
+                    $ev->template_version_id = $newVersion->id;
+                    $ev->save(false);
                 }
             }
 
-            AuditLog::log('assign_department_template', 'EvaluationTemplate', $template->id);
+            AuditLog::log('customize_template_for_dept', 'EvaluationTemplate', $newTemplate->id, null, [
+                'department_id' => $targetDeptId,
+                'personnel_type_id' => $pt->id,
+            ]);
 
-            $deptName = $targetDept ? $targetDept->name_th : 'หน่วยงาน';
-            $ptName = $pt ? $pt->name_th : 'ประเภทบุคลากร';
-            $msg = "เปลี่ยนแบบประเมินสำหรับ \"{$ptName}\" ของ \"{$deptName}\" เป็น \"{$template->name_th}\" (เวอร์ชัน {$version->version_label}) สำเร็จเรียบร้อยแล้ว";
-            if ($updatedEvalCount > 0) {
-                $msg .= " (อัปเดตแบบประเมินบุคลากรในรอบปัจจุบันที่อยู่ระหว่างประเมินตนเองแล้ว {$updatedEvalCount} ท่าน)";
-            }
-            Yii::$app->session->setFlash('success', $msg);
-        } else {
-            Yii::$app->session->setFlash('warning', 'ไม่พบรอบการประเมินที่เปิดใช้งานในระบบ');
+            $tx->commit();
+
+            Yii::$app->session->setFlash('success', "นำแบบประเมินส่วนกลางมาสร้างเป็นแบบเฉพาะของ {$targetDept->name_th} เรียบร้อยแล้ว ท่านสามารถปรับแต่งตัวชี้วัด (KPI) ค่าน้ำหนัก และเกณฑ์คะแนนตามภาระงานจริงของหน่วยงานได้ทันที");
+            return $this->redirect(['builder', 'id' => $newTemplate->id]);
+        } catch (\Throwable $e) {
+            $tx->rollBack();
+            Yii::$app->session->setFlash('danger', 'เกิดข้อผิดพลาดในการสร้างแบบประเมินเฉพาะหน่วยงาน: ' . $e->getMessage());
+            return $this->redirect(['index']);
+        }
+    }
+
+    /**
+     * Revert department evaluation template back to Central Master
+     */
+    public function actionResetToCentral($personnel_type_id, $department_id = null)
+    {
+        $adminCtx = $this->getAdminContext();
+        $isSuperAdmin = $adminCtx['isSuperAdmin'];
+        $myDeptId = $adminCtx['departmentId'];
+
+        $targetDeptId = ($isSuperAdmin && $department_id) ? (int)$department_id : (int)$myDeptId;
+
+        if (!$targetDeptId) {
+            Yii::$app->session->setFlash('danger', 'ไม่พบข้อมูลหน่วยงานของคุณ');
+            return $this->redirect(['index']);
         }
 
-        return $this->redirect(['index', 'department_id' => $departmentId]);
+        if (!$isSuperAdmin) {
+            $scopedDeptIds = $myDeptId ? Department::getAllScopedDeptIds($myDeptId) : [];
+            if (!in_array($targetDeptId, $scopedDeptIds, true)) {
+                throw new ForbiddenHttpException('คุณไม่มีสิทธิ์จัดการแบบประเมินของหน่วยงานอื่น');
+            }
+        }
+
+        $targetDept = Department::findOne($targetDeptId);
+        $pt = PersonnelType::findOne($personnel_type_id);
+
+        $tx = Yii::$app->db->beginTransaction();
+        try {
+            // Deactivate custom templates
+            EvaluationTemplate::updateAll(
+                ['status' => 0],
+                ['department_id' => $targetDeptId, 'personnel_type_id' => $personnel_type_id]
+            );
+
+            // Delete CycleTemplateMapping for this department & personnel type
+            $activeCycle = EvaluationCycle::find()
+                ->where(['status' => [EvaluationCycle::STATUS_ACTIVE, EvaluationCycle::STATUS_EVALUATION, EvaluationCycle::STATUS_DRAFT]])
+                ->orderBy(['id' => SORT_DESC])
+                ->one();
+
+            if ($activeCycle) {
+                CycleTemplateMapping::deleteAll([
+                    'evaluation_cycle_id' => $activeCycle->id,
+                    'department_id' => $targetDeptId,
+                    'personnel_type_id' => $personnel_type_id,
+                ]);
+
+                // Find Central Version
+                $centralVersion = null;
+                $masterMapping = CycleTemplateMapping::find()
+                    ->where(['evaluation_cycle_id' => $activeCycle->id, 'personnel_type_id' => $personnel_type_id])
+                    ->andWhere(['or', ['department_id' => null], ['department_id' => 0]])
+                    ->one();
+
+                if ($masterMapping) {
+                    $centralVersion = $masterMapping->templateVersion;
+                } else {
+                    $centralTpl = EvaluationTemplate::find()
+                        ->where(['personnel_type_id' => $personnel_type_id])
+                        ->andWhere(['or', ['department_id' => null], ['is_default' => 1]])
+                        ->one();
+                    if ($centralTpl) {
+                        $centralVersion = $centralTpl->activeVersion ?: ($centralTpl->versions ? $centralTpl->versions[0] : null);
+                    }
+                }
+
+                // Update unfinalized draft evaluations to Central Version
+                if ($centralVersion) {
+                    $scopedTargetDeptIds = Department::getAllScopedDeptIds($targetDeptId);
+                    $evalsToUpdate = Evaluation::find()
+                        ->innerJoinWith('personnel')
+                        ->where([
+                            '{{%evaluations}}.evaluation_cycle_id' => $activeCycle->id,
+                            '{{%personnel}}.personnel_type_id' => $personnel_type_id,
+                            '{{%evaluations}}.status' => [Evaluation::STATUS_SELF_ASSESSMENT, Evaluation::STATUS_DRAFT],
+                        ])
+                        ->andWhere(['in', '{{%personnel}}.department_id', $scopedTargetDeptIds])
+                        ->all();
+
+                    foreach ($evalsToUpdate as $ev) {
+                        $ev->template_version_id = $centralVersion->id;
+                        $ev->save(false);
+                    }
+                }
+            }
+
+            AuditLog::log('reset_template_to_central', 'EvaluationTemplate', null, null, [
+                'department_id' => $targetDeptId,
+                'personnel_type_id' => $personnel_type_id,
+            ]);
+
+            $tx->commit();
+
+            Yii::$app->session->setFlash('info', "คืนค่าแบบประเมินกลุ่ม '{$pt->name_th}' กลับไปใช้แบบฟอร์มมาตรฐานกลางของมหาวิทยาลัยเรียบร้อยแล้ว");
+        } catch (\Throwable $e) {
+            $tx->rollBack();
+            Yii::$app->session->setFlash('danger', 'เกิดข้อผิดพลาดในการคืนค่า: ' . $e->getMessage());
+        }
+
+        return $this->redirect(['index']);
     }
 
     /**
