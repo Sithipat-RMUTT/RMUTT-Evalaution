@@ -159,6 +159,18 @@ class EvaluationCycle extends ActiveRecord
             if ($mapping && $mapping->templateVersion) {
                 return $mapping->templateVersion;
             }
+
+            // Also check parent department mapping (e.g. ARIT for ARIT-IT)
+            if ($personnel->department && !empty($personnel->department->parent_id)) {
+                $parentMapping = CycleTemplateMapping::findOne([
+                    'evaluation_cycle_id' => $this->id,
+                    'department_id' => $personnel->department->parent_id,
+                    'personnel_type_id' => $personnel->personnel_type_id,
+                ]);
+                if ($parentMapping && $parentMapping->templateVersion) {
+                    return $parentMapping->templateVersion;
+                }
+            }
         }
 
         // 2. Check General Cycle Mapping (department_id IS NULL)
@@ -185,6 +197,20 @@ class EvaluationCycle extends ActiveRecord
                 ->one();
             if ($tmpl && $tmpl->activeVersion) {
                 return $tmpl->activeVersion;
+            }
+
+            // Also check parent department template
+            if ($personnel->department && !empty($personnel->department->parent_id)) {
+                $parentTmpl = EvaluationTemplate::find()
+                    ->where([
+                        'department_id' => $personnel->department->parent_id,
+                        'personnel_type_id' => $personnel->personnel_type_id,
+                        'status' => 1,
+                    ])
+                    ->one();
+                if ($parentTmpl && $parentTmpl->activeVersion) {
+                    return $parentTmpl->activeVersion;
+                }
             }
         }
 

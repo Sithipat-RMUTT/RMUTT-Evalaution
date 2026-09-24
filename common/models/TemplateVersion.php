@@ -70,6 +70,11 @@ class TemplateVersion extends ActiveRecord
         return $this->hasOne(EvaluationTemplate::class, ['id' => 'evaluation_template_id']);
     }
 
+    public function getEvaluationTemplate()
+    {
+        return $this->getTemplate();
+    }
+
     public function getSections()
     {
         return $this->hasMany(EvaluationSection::class, ['template_version_id' => 'id'])->orderBy(['sort_order' => SORT_ASC]);

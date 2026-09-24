@@ -330,6 +330,10 @@ class AuditAllViewsController extends Controller
                 'personnelTypes' => $personnelTypes,
                 'selectedDepartmentId' => null,
                 'selectedPersonnelTypeId' => null,
+                'activeCycle' => EvaluationCycle::findOne(['status' => EvaluationCycle::STATUS_ACTIVE]),
+                'targetDepartment' => $departments[0] ?? null,
+                'targetDeptId' => $departments[0]->id ?? null,
+                'assignedTemplates' => [],
             ]);
             $this->stdout("   ✔ [Backend] template-builder/index.php: OK\n", Console::FG_GREEN);
             $passed++;
