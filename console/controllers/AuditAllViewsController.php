@@ -29,6 +29,14 @@ class AuditAllViewsController extends Controller
         Yii::$app->urlManager->setBaseUrl('');
         Yii::setAlias('@webroot', Yii::getAlias('@frontend/web'));
         Yii::setAlias('@web', '');
+        Yii::$app->set('response', new \yii\web\Response());
+        Yii::$app->set('request', new \yii\web\Request([
+            'url' => '/index.php',
+            'scriptUrl' => '/index.php',
+            'baseUrl' => '',
+            'cookieValidationKey' => 'audit_secret_key_12345678901234567890',
+            'enableCsrfValidation' => false,
+        ]));
 
         $evals = Evaluation::find()->with(['personnel.personnelType', 'personnel.department', 'personnel.position', 'templateVersion.sections.items', 'templateVersion.competencyDefinitions.levels', 'evaluator'])->all();
 
@@ -292,6 +300,29 @@ class AuditAllViewsController extends Controller
                 'personnelTypes' => $personnelTypes,
             ]);
             $this->stdout("   ✔ [Backend] template-builder/create.php: OK\n", Console::FG_GREEN);
+            $passed++;
+
+            // User management views (Admin Users)
+            $userCtrl = new \backend\controllers\UserController('user', Yii::$app);
+            $allAdminUsers = \common\models\User::find()
+                ->innerJoin('auth_assignment', 'auth_assignment.user_id = user.id')
+                ->where(['in', 'auth_assignment.item_name', ['superadmin', 'admin']])
+                ->with(['department', 'personnel.department', 'personnel.position'])
+                ->all();
+            $out = $userCtrl->renderPartial('@backend/views/user/index', [
+                'users' => $allAdminUsers,
+                'canManage' => true,
+            ]);
+            $this->stdout("   ✔ [Backend] user/index.php: OK\n", Console::FG_GREEN);
+            $passed++;
+
+            $adminForm = new \backend\models\AdminUserForm();
+            $out = $userCtrl->renderPartial('@backend/views/user/create', [
+                'model' => $adminForm,
+                'departments' => $departments,
+                'eligiblePersonnel' => \common\models\Personnel::find()->limit(5)->all(),
+            ]);
+            $this->stdout("   ✔ [Backend] user/create.php: OK\n", Console::FG_GREEN);
             $passed++;
 
             if (!empty($templates)) {

@@ -32,23 +32,28 @@ if (!Yii::$app->user->isGuest) {
         ],
     ];
 
-    if ($isCentral) {
+    $isSuperAdmin = Yii::$app->user->can('superadmin');
+
+    if ($isCentral || $isSuperAdmin) {
+        $systemItems = [];
+        if ($isSuperAdmin) {
+            $systemItems[] = [
+                'label' => '<i class="bi bi-shield-lock-fill me-1 text-primary"></i> จัดการผู้ดูแลระบบ (Admin Users)',
+                'url' => ['/user/index'],
+            ];
+        }
+        $systemItems[] = [
+            'label' => '<i class="bi bi-calendar3 me-1"></i> รอบการประเมิน',
+            'url' => ['/cycle/index'],
+        ];
+        $systemItems[] = [
+            'label' => '<i class="bi bi-file-earmark-ruled-fill me-1 text-warning"></i> จัดการแบบประเมิน (Builder)',
+            'url' => ['/template-builder/index'],
+        ];
+
         $items[] = [
             'label' => '<i class="bi bi-gear-fill me-1"></i> จัดการระบบ',
-            'items' => [
-                [
-                    'label' => '<i class="bi bi-shield-lock-fill me-1 text-primary"></i> จัดการผู้ดูแลระบบ (Admin Users)',
-                    'url' => ['/user/index'],
-                ],
-                [
-                    'label' => '<i class="bi bi-calendar3 me-1"></i> รอบการประเมิน',
-                    'url' => ['/cycle/index'],
-                ],
-                [
-                    'label' => '<i class="bi bi-file-earmark-ruled-fill me-1 text-warning"></i> จัดการแบบประเมิน (Builder)',
-                    'url' => ['/template-builder/index'],
-                ],
-            ],
+            'items' => $systemItems,
         ];
     }
 

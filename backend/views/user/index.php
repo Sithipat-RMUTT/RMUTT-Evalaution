@@ -17,7 +17,7 @@ $this->title = 'จัดการผู้ใช้งานระดับผ�
             <h4 class="fw-bold mb-1 text-dark">
                 <i class="bi bi-shield-lock-fill text-primary me-2"></i> ผู้ใช้งานระบบ (Admin Users)
             </h4>
-            <p class="text-muted mb-0">บัญชีผู้ดูแลระบบสำหรับบริหารจัดการข้อมูล กำหนดค่ารอบประเมิน และตรวจสอบระบบ (แยกต่างหากจากข้อมูลบุคลากร)</p>
+            <p class="text-muted mb-0">จัดการบัญชีผู้ดูแลระบบทั้งที่แต่งตั้งจากบุคลากรในระบบ และบัญชีระบบเฉพาะกิจ (สิทธิ์เฉพาะ Superadmin)</p>
         </div>
         <?php if ($canManage): ?>
             <div>
@@ -35,13 +35,13 @@ $this->title = 'จัดการผู้ใช้งานระดับผ�
                     <tr>
                         <th style="width: 50px;">#</th>
                         <th>ชื่อบัญชี (Username)</th>
-                        <th>ชื่อ - นามสกุล / คำอธิบาย</th>
+                        <th>ผู้ดูแลระบบ / ข้อมูลบุคลากร</th>
                         <th>อีเมล</th>
                         <th>บทบาทระบบ (Role)</th>
                         <th>ขอบเขตหน่วยงาน (Scope)</th>
                         <th>สถานะ</th>
                         <?php if ($canManage): ?>
-                            <th class="text-center" style="width: 160px;">การจัดการ</th>
+                            <th class="text-center" style="width: 170px;">การจัดการ</th>
                         <?php endif; ?>
                     </tr>
                 </thead>
@@ -57,6 +57,7 @@ $this->title = 'จัดการผู้ใช้งานระดับผ�
                             $roleLabel = implode(', ', $roles);
                             $badgeClass = 'bg-primary';
                             $scopeDesc = $u->department ? $u->department->name_th : 'ส่วนกลาง (ทุกหน่วยงาน)';
+                            $isPersonnel = !empty($u->personnel);
                             
                             if (in_array('superadmin', $roles, true)) {
                                 $badgeClass = 'bg-danger';
@@ -71,7 +72,8 @@ $this->title = 'จัดการผู้ใช้งานระดับผ�
                                 $roleLabel = 'Department Admin';
                                 $scopeDesc = $u->department->name_th;
                             }
-                            $isSelf = ((int)$u->id === (int)Yii::$app->user->id);
+                            $currUserId = (Yii::$app->has('user') && !Yii::$app->user->isGuest) ? Yii::$app->user->id : 0;
+                            $isSelf = ((int)$u->id === (int)$currUserId);
                             $isPrimaryAdmin = ((int)$u->id === 1);
                             ?>
                             <tr>
@@ -83,7 +85,22 @@ $this->title = 'จัดการผู้ใช้งานระดับผ�
                                     <?php endif; ?>
                                 </td>
                                 <td>
-                                    <?= Html::encode($u->display_name ?: '-') ?>
+                                    <?php if ($isPersonnel): ?>
+                                        <div class="fw-bold text-primary">
+                                            <i class="bi bi-person-check-fill me-1"></i><?= Html::encode($u->personnel->fullName) ?>
+                                        </div>
+                                        <div class="small text-muted">
+                                            <?= Html::encode($u->personnel->position->name_th ?? '') ?> | รหัส: <?= Html::encode($u->personnel->employee_code) ?>
+                                        </div>
+                                        <span class="badge bg-light text-primary border" style="font-size: 0.7rem;">
+                                            <i class="bi bi-link-45deg me-1"></i>แต่งตั้งจากบุคลากร
+                                        </span>
+                                    <?php else: ?>
+                                        <div><strong><?= Html::encode($u->display_name ?: '-') ?></strong></div>
+                                        <span class="badge bg-light text-secondary border" style="font-size: 0.7rem;">
+                                            <i class="bi bi-hdd-network me-1"></i>บัญชีระบบเฉพาะ
+                                        </span>
+                                    <?php endif; ?>
                                 </td>
                                 <td><?= Html::encode($u->email) ?></td>
                                 <td>
@@ -118,12 +135,21 @@ $this->title = 'จัดการผู้ใช้งานระดับผ�
                                                         'data-confirm' => 'คุณต้องการ' . ($u->status == \common\models\User::STATUS_ACTIVE ? 'ระงับ' : 'เปิด') . 'การใช้งานบัญชี ' . Html::encode($u->username) . ' ใช่หรือไม่?',
                                                     ]
                                                 ) ?>
-                                                <?= Html::a('<i class="bi bi-trash"></i>', ['delete', 'id' => $u->id], [
-                                                    'class' => 'btn btn-outline-danger',
-                                                    'title' => 'ลบผู้ดูแลระบบ',
-                                                    'data-method' => 'post',
-                                                    'data-confirm' => 'คุณแน่ใจหรือไม่ว่าต้องการลบบัญชีผู้ดูแลระบบ "' . Html::encode($u->username) . '" ออกจากระบบ?',
-                                                ]) ?>
+                                                <?php if ($isPersonnel): ?>
+                                                    <?= Html::a('<i class="bi bi-person-dash"></i>', ['delete', 'id' => $u->id], [
+                                                        'class' => 'btn btn-outline-danger',
+                                                        'title' => 'ถอดถอนสิทธิ์ผู้ดูแลระบบ (บัญชีบุคลากรยังคงอยู่)',
+                                                        'data-method' => 'post',
+                                                        'data-confirm' => 'คุณต้องการถอดถอนสิทธิ์ผู้ดูแลระบบของ "' . Html::encode($u->personnel->fullName) . '" ใช่หรือไม่? (บัญชีและข้อมูลบุคลากรทั่วไปจะยังคงใช้งานได้ตามปกติ)',
+                                                    ]) ?>
+                                                <?php else: ?>
+                                                    <?= Html::a('<i class="bi bi-trash"></i>', ['delete', 'id' => $u->id], [
+                                                        'class' => 'btn btn-outline-danger',
+                                                        'title' => 'ลบบัญชีผู้ดูแลระบบเฉพาะกิจ',
+                                                        'data-method' => 'post',
+                                                        'data-confirm' => 'คุณแน่ใจหรือไม่ว่าต้องการลบบัญชีผู้ดูแลระบบ "' . Html::encode($u->username) . '" ออกจากระบบ?',
+                                                    ]) ?>
+                                                <?php endif; ?>
                                             <?php else: ?>
                                                 <button class="btn btn-outline-secondary disabled" title="บัญชีหลักหรือบัญชีที่กำลังใช้งานไม่สามารถปิดหรือลบได้"><i class="bi bi-lock"></i></button>
                                             <?php endif; ?>
