@@ -96,7 +96,7 @@ $roleItems = [
                 <label class="form-label fw-bold">
                     <i class="bi bi-search me-1 text-primary"></i> ค้นหาและเลือกบุคลากรที่ต้องการแต่งตั้งเป็น Admin: <span class="text-danger">*</span>
                 </label>
-                <select name="AdminUserForm[personnel_id]" id="personnel-select" class="form-select select2" style="width: 100%;">
+                <select name="AdminUserForm[personnel_id]" id="personnel-select" class="form-select select2-searchable" style="width: 100%;">
                     <option value="">-- พิมพ์ชื่อ, นามสกุล หรือรหัสบุคลากร เพื่อค้นหา --</option>
                     <?php foreach ($eligiblePersonnel as $p): ?>
                         <?php
@@ -249,32 +249,38 @@ $roleItems = [
 </div>
 
 <?php
-$this->registerJs(<<<JS
-jQuery(document).ready(function($) {
-    if ($.fn.select2) {
-        $('#personnel-select').select2({
-            theme: 'bootstrap-5',
-            placeholder: '-- พิมพ์ชื่อ, นามสกุล หรือรหัสบุคลากร เพื่อค้นหา --',
-            allowClear: true,
-            language: {
-                noResults: function() { return 'ไม่พบข้อมูลบุคลากร'; }
-            }
-        });
+$hrDeptJson = json_encode($hrDeptId);
+
+$js = <<<JS
+$(document).ready(function() {
+    function initSelect2() {
+        if (typeof $.fn.select2 !== 'undefined') {
+            $('#personnel-select').select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                placeholder: '-- พิมพ์ชื่อ, นามสกุล หรือรหัสบุคลากร เพื่อค้นหา --',
+                allowClear: true,
+                language: {
+                    noResults: function() { return 'ไม่พบข้อมูลบุคลากร'; }
+                }
+            });
+        }
     }
+    initSelect2();
 
     function updatePersonnelPreview() {
-        var \$opt = $('#personnel-select').find('option:selected');
+        var opt = $('#personnel-select').find('option:selected');
         var val = $('#personnel-select').val();
-        if (val && \$opt.length) {
-            $('#pv-name').text(\$opt.data('name') || '-');
-            $('#pv-position').text(\$opt.data('position') || '-');
-            $('#pv-dept').text(\$opt.data('dept-name') || '-');
-            $('#pv-username').text(\$opt.data('username') || '-');
-            $('#pv-email').text(\$opt.data('email') || '-');
+        if (val && opt.length) {
+            $('#pv-name').text(opt.data('name') || '-');
+            $('#pv-position').text(opt.data('position') || '-');
+            $('#pv-dept').text(opt.data('dept-name') || '-');
+            $('#pv-username').text(opt.data('username') || '-');
+            $('#pv-email').text(opt.data('email') || '-');
             $('#personnel-preview-card').removeClass('d-none');
 
-            var deptId = \$opt.data('dept-id');
-            if (deptId && $('#admin-role-select').val() !== 'superadmin') {
+            var deptId = opt.data('dept-id');
+            if (deptId && $('#admin-role-select').val() === 'admin') {
                 $('#scope-dept-select').val(deptId);
             }
         } else {
@@ -282,7 +288,7 @@ jQuery(document).ready(function($) {
         }
     }
 
-    $('#personnel-select').on('change', updatePersonnelPreview);
+    $('#personnel-select').on('change select2:select select2:clear', updatePersonnelPreview);
     updatePersonnelPreview();
 
     $('input[name="AdminUserForm[create_mode]"]').on('change', function() {
@@ -295,6 +301,7 @@ jQuery(document).ready(function($) {
             $('#standalone-email').prop('disabled', true);
             $('#standalone-password').prop('disabled', true);
             $('#personnel-select').prop('disabled', false);
+            initSelect2();
             updatePersonnelPreview();
         } else {
             $('#section-appoint').addClass('d-none');
@@ -308,7 +315,7 @@ jQuery(document).ready(function($) {
         }
     });
 
-    var hrDeptId = <?= json_encode($hrDeptId) ?>;
+    var hrDeptId = {$hrDeptJson};
 
     // When role changes
     $('#admin-role-select').on('change', function() {
@@ -335,6 +342,6 @@ jQuery(document).ready(function($) {
         $('#standalone-password').prop('disabled', true);
     }
 });
-JS
-);
+JS;
+$this->registerJs($js);
 ?>
