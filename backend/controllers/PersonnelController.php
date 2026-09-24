@@ -59,25 +59,35 @@ class PersonnelController extends Controller
 
         if (!$isSuperAdmin && $myDeptId) {
             if ($deptId && in_array((int)$deptId, $scopedDeptIds, true)) {
-                $query->andWhere(['department_id' => (int)$deptId]);
+                $query->andWhere(['{{%personnel}}.department_id' => (int)$deptId]);
             } else {
-                $query->andWhere(['in', 'department_id', $scopedDeptIds]);
+                $query->andWhere(['in', '{{%personnel}}.department_id', $scopedDeptIds]);
             }
         } elseif ($deptId) {
-            $query->andWhere(['department_id' => (int)$deptId]);
+            $query->andWhere(['{{%personnel}}.department_id' => (int)$deptId]);
         }
 
-        if ($typeId) $query->andWhere(['personnel_type_id' => $typeId]);
+        if ($typeId) {
+            $query->andWhere(['{{%personnel}}.personnel_type_id' => (int)$typeId]);
+        }
         if ($search) {
+            $cleanSearch = trim($search);
+            $query->leftJoin('{{%positions}}', '{{%positions}}.id = {{%personnel}}.position_id');
             $query->andWhere([
                 'or',
-                ['like', 'first_name_th', $search],
-                ['like', 'last_name_th', $search],
-                ['like', 'employee_code', $search],
+                ['like', '{{%personnel}}.employee_code', $cleanSearch],
+                ['like', '{{%personnel}}.first_name_th', $cleanSearch],
+                ['like', '{{%personnel}}.last_name_th', $cleanSearch],
+                ['like', '{{%personnel}}.email', $cleanSearch],
+                ['like', '{{%personnel}}.phone', $cleanSearch],
+                ['like', '{{%positions}}.name_th', $cleanSearch],
+                ['like', new \yii\db\Expression("CONCAT(COALESCE({{%personnel}}.first_name_th, ''), ' ', COALESCE({{%personnel}}.last_name_th, ''))"), $cleanSearch],
+                ['like', new \yii\db\Expression("CONCAT(COALESCE({{%personnel}}.prefix_th, ''), COALESCE({{%personnel}}.first_name_th, ''), ' ', COALESCE({{%personnel}}.last_name_th, ''))"), $cleanSearch],
+                ['like', new \yii\db\Expression("CONCAT(COALESCE({{%personnel}}.prefix_th, ''), ' ', COALESCE({{%personnel}}.first_name_th, ''), ' ', COALESCE({{%personnel}}.last_name_th, ''))"), $cleanSearch],
             ]);
         }
 
-        $personnelList = $query->orderBy(['id' => SORT_ASC])->all();
+        $personnelList = $query->orderBy(['{{%personnel}}.id' => SORT_ASC])->all();
         $types = PersonnelType::find()->all();
 
         if ($isSuperAdmin) {

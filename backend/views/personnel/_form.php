@@ -65,17 +65,29 @@ $supervisors = ArrayHelper::map(
             </div>
 
             <div class="col-md-4">
-                <?= $form->field($model, 'personnel_type_id')->dropDownList($types, ['prompt' => '-- เลือกประเภทบุคลากร --']) ?>
+                <?= $form->field($model, 'personnel_type_id')->dropDownList($types, [
+                    'prompt' => '-- เลือกประเภทบุคลากร --',
+                    'class' => 'form-select select2-searchable',
+                ]) ?>
             </div>
             <div class="col-md-4">
-                <?= $form->field($model, 'department_id')->dropDownList($departments, ['prompt' => '-- เลือกฝ่าย/สังกัด --']) ?>
+                <?= $form->field($model, 'department_id')->dropDownList($departments, [
+                    'prompt' => '-- เลือกฝ่าย/สังกัด --',
+                    'class' => 'form-select select2-searchable',
+                ]) ?>
             </div>
             <div class="col-md-4">
-                <?= $form->field($model, 'position_id')->dropDownList($positions, ['prompt' => '-- เลือกตำแหน่ง --']) ?>
+                <?= $form->field($model, 'position_id')->dropDownList($positions, [
+                    'prompt' => '-- เลือกตำแหน่ง --',
+                    'class' => 'form-select select2-searchable',
+                ]) ?>
             </div>
 
             <div class="col-md-6">
-                <?= $form->field($model, 'supervisor_id')->dropDownList($supervisors, ['prompt' => '-- ไม่มี / เป็นผู้บริหารสูงสุด --']) ?>
+                <?= $form->field($model, 'supervisor_id')->dropDownList($supervisors, [
+                    'prompt' => '-- ไม่มี / เป็นผู้บริหารสูงสุด --',
+                    'class' => 'form-select select2-searchable',
+                ]) ?>
             </div>
             <div class="col-md-3">
                 <?= $form->field($model, 'is_supervisor')->dropDownList([
@@ -106,3 +118,21 @@ $supervisors = ArrayHelper::map(
 
     <?php ActiveForm::end(); ?>
 </div>
+
+<?php
+$js = <<<JS
+$(document).ready(function() {
+    if ($.fn.select2) {
+        $('.select2-searchable').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            allowClear: true,
+            placeholder: function() {
+                return $(this).find('option[value=""]').text() || '-- เลือก --';
+            }
+        });
+    }
+});
+JS;
+$this->registerJs($js);
+?>
