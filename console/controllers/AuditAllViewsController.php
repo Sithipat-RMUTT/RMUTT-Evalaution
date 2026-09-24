@@ -177,14 +177,54 @@ class AuditAllViewsController extends Controller
         try {
             $out = $siteCtrl->renderPartial('@backend/views/site/index', [
                 'activeCycle' => EvaluationCycle::findOne(['status' => EvaluationCycle::STATUS_ACTIVE]),
+                'selectedCycle' => EvaluationCycle::findOne(['status' => EvaluationCycle::STATUS_ACTIVE]),
+                'cycles' => EvaluationCycle::find()->all(),
                 'totalPersonnel' => 10,
                 'totalSupervisors' => 2,
+                'evaluatedCount' => 5,
+                'evaluationRate' => 50.0,
                 'statusCounts' => ['total' => 10, 'self_assessment' => 2, 'submitted' => 2, 'supervisor_review' => 1, 'completed' => 5, 'returned' => 0],
                 'gradeCounts' => ['ดีเด่น' => 2, 'ดีมาก' => 2, 'ดี' => 1, 'พอใช้' => 0, 'ต้องปรับปรุง' => 0, 'ไม่ผ่าน' => 0],
+                'gradePcts' => ['ดีเด่น' => 40.0, 'ดีมาก' => 40.0, 'ดี' => 20.0, 'พอใช้' => 0, 'ต้องปรับปรุง' => 0],
+                'quotaCaps' => ['ดีเด่น' => 15.0, 'ดีมาก' => 35.0, 'ดี' => 35.0, 'พอใช้' => 10.0, 'ต้องปรับปรุง' => 5.0],
+                'avgScore' => 84.50,
+                'avgKpi' => 52.00,
+                'avgComp' => 32.50,
+                'orgTier' => 'ดีมาก',
+                'orgTierBadge' => 'bg-primary text-white',
+                'quotaStatus' => [
+                    'is_over_quota' => true,
+                    'excellent_count' => 2,
+                    'excellent_pct' => 40.0,
+                    'ceiling_pct' => 15.0,
+                    'message' => 'สัดส่วนกลุ่มดีเด่นเกินกรอบโควตา',
+                ],
+                'excellentCount' => 2,
+                'excellentPct' => 40.0,
+                'veryGoodCount' => 2,
+                'veryGoodPct' => 40.0,
+                'topTalentCount' => 4,
+                'topTalentPct' => 80.0,
+                'atRiskPersonnel' => $evals,
+                'atRiskCount' => count($evals),
+                'atRiskPct' => 20.0,
+                'topPerformers' => $evals,
+                'deptBenchmark' => [],
+                'deptProgress' => [],
+                'competencyGaps' => [
+                    [
+                        'id' => 1,
+                        'name_th' => 'ทักษะดิจิทัลและการประยุกต์ใช้',
+                        'type' => 'Core Competency',
+                        'expected' => 3,
+                        'actual' => 2.40,
+                        'gap' => -0.60,
+                    ]
+                ],
                 'recentEvaluations' => $evals,
                 'departments' => Department::find()->all(),
             ]);
-            $this->stdout("   ✔ [Backend] site/index.php (HR Dashboard): OK\n", Console::FG_GREEN);
+            $this->stdout("   ✔ [Backend] site/index.php (HR Executive Results Dashboard): OK\n", Console::FG_GREEN);
             $passed++;
         } catch (\Throwable $e) {
             $this->stdout("   ✖ [Backend] site/index.php ERROR: " . $e->getMessage() . "\n", Console::FG_RED, Console::BOLD);
