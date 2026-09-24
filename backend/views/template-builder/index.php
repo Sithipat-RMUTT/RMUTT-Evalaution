@@ -216,8 +216,13 @@ $isLibraryTab = ($reqTab === 'library' || $selectedDepartmentId !== null || $sel
                                             <div class="d-inline-flex align-items-center gap-1.5">
                                                 <!-- Action 1: Change / Assign Template -->
                                                 <button type="button" 
-                                                        class="btn btn-sm btn-outline-primary fw-semibold" 
-                                                        onclick="openAssignModal(<?= $activeDept ? $activeDept->id : 0 ?>, <?= $pt->id ?>, '<?= Html::encode($pt->name_th) ?>', '<?= Html::encode($activeDept ? $activeDept->name_th : '') ?>', <?= $curTpl ? $curTpl->id : 0 ?>)"
+                                                        class="btn btn-sm btn-outline-primary fw-semibold btn-assign-template" 
+                                                        data-dept-id="<?= $activeDept ? $activeDept->id : 0 ?>"
+                                                        data-dept-name="<?= Html::encode($activeDept ? $activeDept->name_th : '') ?>"
+                                                        data-pt-id="<?= $pt->id ?>"
+                                                        data-pt-name="<?= Html::encode($pt->name_th) ?>"
+                                                        data-current-template-id="<?= $curTpl ? $curTpl->id : 0 ?>"
+                                                        onclick="window.openAssignModal && window.openAssignModal(<?= $activeDept ? $activeDept->id : 0 ?>, <?= $pt->id ?>, '<?= Html::encode($pt->name_th) ?>', '<?= Html::encode($activeDept ? $activeDept->name_th : '') ?>', <?= $curTpl ? $curTpl->id : 0 ?>)"
                                                         title="สลับไปใช้แบบประเมินอื่น">
                                                     <i class="bi bi-arrow-repeat me-1"></i>เปลี่ยนแบบ
                                                 </button>
@@ -230,8 +235,12 @@ $isLibraryTab = ($reqTab === 'library' || $selectedDepartmentId !== null || $sel
                                                     ]) ?>
                                                 <?php elseif ($curTpl): ?>
                                                     <button type="button" 
-                                                            class="btn btn-sm btn-outline-success fw-semibold" 
-                                                            onclick="openCloneAndAssignModal(<?= $curTpl->id ?>, '<?= Html::encode($curTpl->name_th) ?>', <?= $activeDept ? $activeDept->id : 0 ?>, '<?= Html::encode($activeDept ? $activeDept->name_th : '') ?>')" 
+                                                            class="btn btn-sm btn-outline-success fw-semibold btn-clone-assign-template" 
+                                                            data-source-id="<?= $curTpl->id ?>"
+                                                            data-source-name="<?= Html::encode($curTpl->name_th) ?>"
+                                                            data-target-dept-id="<?= $activeDept ? $activeDept->id : 0 ?>"
+                                                            data-target-dept-name="<?= Html::encode($activeDept ? $activeDept->name_th : '') ?>"
+                                                            onclick="window.openCloneAndAssignModal && window.openCloneAndAssignModal(<?= $curTpl->id ?>, '<?= Html::encode($curTpl->name_th) ?>', <?= $activeDept ? $activeDept->id : 0 ?>, '<?= Html::encode($activeDept ? $activeDept->name_th : '') ?>')"
                                                             title="คัดลอกแม่แบบกลางมาปรับแต่งตัวชี้วัดเฉพาะหน่วยงาน">
                                                         <i class="bi bi-copy me-1"></i>คัดลอกมาปรับแต่ง
                                                     </button>
@@ -387,8 +396,10 @@ $isLibraryTab = ($reqTab === 'library' || $selectedDepartmentId !== null || $sel
                                                     ]) ?>
                                                 <?php endif; ?>
                                                 <button type="button" 
-                                                        class="btn btn-outline-secondary" 
-                                                        onclick="openCloneModal(<?= $tpl->id ?>, '<?= Html::encode($tpl->name_th) ?>')" 
+                                                        class="btn btn-outline-secondary btn-clone-template" 
+                                                        data-source-id="<?= $tpl->id ?>"
+                                                        data-source-name="<?= Html::encode($tpl->name_th) ?>"
+                                                        onclick="window.openCloneModal && window.openCloneModal(<?= $tpl->id ?>, '<?= Html::encode($tpl->name_th) ?>')" 
                                                         title="คัดลอกแบบประเมิน">
                                                     <i class="bi bi-copy"></i>
                                                 </button>
@@ -519,62 +530,129 @@ $isLibraryTab = ($reqTab === 'library' || $selectedDepartmentId !== null || $sel
 </div>
 
 <!-- JavaScript for Modals & Dynamic Data -->
-<?php
-$assignedTemplatesJson = json_encode($assignedTemplates);
-$jsScript = <<<JS
-const assignedTemplatesData = {$assignedTemplatesJson};
+<script>
+window.assignedTemplatesData = <?= json_encode($assignedTemplates) ?>;
 
-function openAssignModal(deptId, ptId, ptName, deptName, currentTemplateId) {
-    document.getElementById('assignDeptId').value = deptId;
-    document.getElementById('assignPtId').value = ptId;
-    document.getElementById('assignPtName').innerText = ptName + (deptName ? ' (' + deptName + ')' : '');
+function showBootstrapModal(modalId) {
+    var el = document.getElementById(modalId);
+    if (!el) return;
+    try {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            var inst = bootstrap.Modal.getOrCreateInstance(el);
+            inst.show();
+            return;
+        }
+    } catch (e) {
+        console.warn('Bootstrap modal instance error:', e);
+    }
+    if (typeof jQuery !== 'undefined' && typeof jQuery.fn.modal !== 'undefined') {
+        jQuery(el).modal('show');
+    }
+}
 
-    const select = document.getElementById('assignTemplateSelect');
-    select.innerHTML = '';
+window.openAssignModal = function(deptId, ptId, ptName, deptName, currentTemplateId) {
+    var deptIdInput = document.getElementById('assignDeptId');
+    var ptIdInput = document.getElementById('assignPtId');
+    var ptNameEl = document.getElementById('assignPtName');
+    var select = document.getElementById('assignTemplateSelect');
 
-    const ptData = assignedTemplatesData[ptId];
-    if (ptData && ptData.availableTemplates) {
-        ptData.availableTemplates.forEach(tpl => {
-            const opt = document.createElement('option');
-            opt.value = tpl.id;
-            
-            let label = tpl.name_th;
-            if (tpl.department_id) {
-                label += ' [แบบเฉพาะหน่วยงาน]';
-            } else {
-                label += ' [แม่แบบมาตรฐานกลาง]';
-            }
-            if (tpl.id === currentTemplateId) {
-                label += ' ⭐ (กำลังใช้งาน)';
-                opt.selected = true;
-            }
-            opt.text = label;
+    if (deptIdInput) deptIdInput.value = deptId || '';
+    if (ptIdInput) ptIdInput.value = ptId || '';
+    if (ptNameEl) ptNameEl.innerText = (ptName || '-') + (deptName ? ' (' + deptName + ')' : '');
+
+    if (select) {
+        select.innerHTML = '';
+        var ptData = window.assignedTemplatesData ? window.assignedTemplatesData[ptId] : null;
+        if (ptData && ptData.availableTemplates && ptData.availableTemplates.length > 0) {
+            ptData.availableTemplates.forEach(function(tpl) {
+                var opt = document.createElement('option');
+                opt.value = tpl.id;
+                
+                var label = tpl.name_th;
+                if (tpl.department_id) {
+                    label += ' [แบบเฉพาะหน่วยงาน]';
+                } else {
+                    label += ' [แม่แบบมาตรฐานกลาง]';
+                }
+                if (parseInt(tpl.id, 10) === parseInt(currentTemplateId, 10)) {
+                    label += ' ⭐ (กำลังใช้งาน)';
+                    opt.selected = true;
+                }
+                opt.text = label;
+                select.appendChild(opt);
+            });
+        } else {
+            var opt = document.createElement('option');
+            opt.value = '';
+            opt.text = '-- ไม่พบแบบประเมินสำหรับกลุ่มนี้ --';
             select.appendChild(opt);
-        });
+        }
     }
 
-    const modal = new bootstrap.Modal(document.getElementById('assignModal'));
-    modal.show();
-}
+    showBootstrapModal('assignModal');
+};
 
-function openCloneModal(id, name) {
-    document.getElementById('cloneSourceId').value = id;
-    document.getElementById('cloneSourceName').value = name;
-    document.getElementById('cloneAssignNow').value = '0';
-    document.getElementById('cloneNewName').value = '';
-    const modal = new bootstrap.Modal(document.getElementById('cloneModal'));
-    modal.show();
-}
+window.openCloneModal = function(id, name) {
+    var idInput = document.getElementById('cloneSourceId');
+    var nameInput = document.getElementById('cloneSourceName');
+    var assignNowInput = document.getElementById('cloneAssignNow');
+    var newNameInput = document.getElementById('cloneNewName');
 
-function openCloneAndAssignModal(sourceTemplateId, sourceName, targetDeptId, targetDeptName) {
-    document.getElementById('cloneSourceId').value = sourceTemplateId;
-    document.getElementById('cloneSourceName').value = sourceName;
-    document.getElementById('cloneAssignNow').value = '1';
-    document.getElementById('cloneTargetDeptSelect').value = targetDeptId;
-    document.getElementById('cloneNewName').value = sourceName + (targetDeptName ? ' (' + targetDeptName + ')' : '');
-    const modal = new bootstrap.Modal(document.getElementById('cloneModal'));
-    modal.show();
-}
-JS;
-$this->registerJs($jsScript);
-?>
+    if (idInput) idInput.value = id || '';
+    if (nameInput) nameInput.value = name || '';
+    if (assignNowInput) assignNowInput.value = '0';
+    if (newNameInput) newNameInput.value = '';
+
+    showBootstrapModal('cloneModal');
+};
+
+window.openCloneAndAssignModal = function(sourceTemplateId, sourceName, targetDeptId, targetDeptName) {
+    var idInput = document.getElementById('cloneSourceId');
+    var nameInput = document.getElementById('cloneSourceName');
+    var assignNowInput = document.getElementById('cloneAssignNow');
+    var deptSelect = document.getElementById('cloneTargetDeptSelect');
+    var newNameInput = document.getElementById('cloneNewName');
+
+    if (idInput) idInput.value = sourceTemplateId || '';
+    if (nameInput) nameInput.value = sourceName || '';
+    if (assignNowInput) assignNowInput.value = '1';
+    if (deptSelect && targetDeptId) deptSelect.value = targetDeptId;
+    if (newNameInput) newNameInput.value = (sourceName || '') + (targetDeptName ? ' (' + targetDeptName + ')' : '');
+
+    showBootstrapModal('cloneModal');
+};
+
+// Event Delegation once DOM / jQuery is ready
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof jQuery !== 'undefined') {
+        jQuery(document).on('click', '.btn-assign-template', function (e) {
+            e.preventDefault();
+            var btn = jQuery(this);
+            window.openAssignModal(
+                btn.data('dept-id'),
+                btn.data('pt-id'),
+                btn.data('pt-name'),
+                btn.data('dept-name'),
+                btn.data('current-template-id')
+            );
+        });
+
+        jQuery(document).on('click', '.btn-clone-template', function (e) {
+            e.preventDefault();
+            var btn = jQuery(this);
+            window.openCloneModal(btn.data('source-id'), btn.data('source-name'));
+        });
+
+        jQuery(document).on('click', '.btn-clone-assign-template', function (e) {
+            e.preventDefault();
+            var btn = jQuery(this);
+            window.openCloneAndAssignModal(
+                btn.data('source-id'),
+                btn.data('source-name'),
+                btn.data('target-dept-id'),
+                btn.data('target-dept-name')
+            );
+        });
+    }
+});
+</script>
