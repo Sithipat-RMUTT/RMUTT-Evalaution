@@ -2,11 +2,18 @@
 
 declare(strict_types=1);
 
+$cookieKey = getenv('COOKIE_VALIDATION_KEY') ?: getenv('BACKEND_COOKIE_KEY');
+if (empty($cookieKey)) {
+    if (defined('YII_ENV_PROD') && YII_ENV_PROD) {
+        throw new \yii\base\InvalidConfigException('COOKIE_VALIDATION_KEY must be configured in environment variables for production.');
+    }
+    $cookieKey = 'dev_rmutt_cookie_key_shared_evaluation_system_2026';
+}
+
 $config = [
     'components' => [
         'request' => [
-            // !!! insert a secret key in the following (if it is empty) - this is required by cookie validation
-            'cookieValidationKey' => '',
+            'cookieValidationKey' => $cookieKey,
         ],
     ],
 ];
