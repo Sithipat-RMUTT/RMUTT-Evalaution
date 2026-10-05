@@ -637,7 +637,7 @@ class SeedController extends Controller
                 'personnel_type_id' => $typeId,
                 'code' => $templateCode,
                 'name_th' => "แบบประเมินผลการปฏิบัติราชการของ{$typeName}",
-                'description' => "แบบข้อตกลงและแบบประเมินผลสัมฤทธิ์ของงาน (80%) และสมรรถนะ (20%) สำหรับ{$typeName}",
+                'description' => "แบบข้อตกลงและแบบประเมินผลสัมฤทธิ์ของงาน (70%) และสมรรถนะ (30%) สำหรับ{$typeName}",
                 'status' => 1,
                 'created_at' => $now,
                 'updated_at' => $now,
@@ -649,8 +649,8 @@ class SeedController extends Controller
         if (!$vId) {
             $formula = [
                 'type' => 'CIVIL_WEIGHTED',
-                'performance_weight' => 80.0,
-                'competency_weight' => 20.0,
+                'performance_weight' => 70.0,
+                'competency_weight' => 30.0,
                 'main_work_weight' => 80.0,
                 'secondary_work_policy_weight' => 15.0,
                 'secondary_work_academic_weight' => 5.0,
@@ -781,9 +781,9 @@ class SeedController extends Controller
             $db->createCommand()->insert('{{%evaluation_sections}}', [
                 'template_version_id' => $vId,
                 'section_code' => 'COMPETENCY_EVAL',
-                'name_th' => 'แบบข้อตกลงการประเมินขีดความสามารถ/สมรรถนะของสายสนับสนุน (ค่าน้ำหนัก ๒๐%)',
+                'name_th' => 'แบบข้อตกลงการประเมินขีดความสามารถ/สมรรถนะของสายสนับสนุน (ค่าน้ำหนัก ๓๐%)',
                 'description' => 'สมรรถนะหลัก 4 ตัว และสมรรถนะทางวิชาชีพ 3 ตัว (ระดับที่คาดหวัง: 3)',
-                'weight' => 20.00,
+                'weight' => 30.00,
                 'sort_order' => 4,
                 'section_type' => 'competency',
                 'created_at' => $now,

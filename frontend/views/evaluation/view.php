@@ -70,11 +70,28 @@ $evaluatorL2Name = $evaluation->evaluatorL2 ? $evaluation->evaluatorL2->fullName
 $evaluatorL2Pos = ($evaluation->evaluatorL2 && $evaluation->evaluatorL2->position) ? $evaluation->evaluatorL2->position->name_th : (($personnel->divisionHead && $personnel->divisionHead->position) ? $personnel->divisionHead->position->name_th : '...................................................');
 
 // Scores calculation
-$isUnivOrGovt = ($isUniv || $isGovt || $isCivil);
-$perfWeight = 70.0;
-$compWeight = 30.0;
-$perfWeightTh = '๗๐%';
-$compWeightTh = '๓๐%';
+$isCivilOrUniv = ($isCivil || $isUniv);
+if ($isCivilOrUniv) {
+    $perfWeight = 70.0;
+    $compWeight = 30.0;
+    $perfWeightTh = '๗๐%';
+    $compWeightTh = '๓๐%';
+} elseif ($isGovt) {
+    $perfWeight = 80.0;
+    $compWeight = 20.0;
+    $perfWeightTh = '๘๐%';
+    $compWeightTh = '๒๐%';
+} elseif ($isSpecial) {
+    $perfWeight = 55.0;
+    $compWeight = 45.0;
+    $perfWeightTh = '๕๕';
+    $compWeightTh = '๔๕';
+} else {
+    $perfWeight = 70.0;
+    $compWeight = 30.0;
+    $perfWeightTh = '๗๐%';
+    $compWeightTh = '๓๐%';
+}
 
 $perfScoreFinal = $result ? floatval($result->supervisor_performance_score) : 0.0;
 $perfScore100 = ($perfScoreFinal / $perfWeight) * 100.0;
@@ -1747,7 +1764,7 @@ $isEvaluated = $isL1Evaluated || $isL2Evaluated || ($evaluation->status === Eval
                             <tr class="fw-bold bg-success-subtle">
                                 <td colspan="2" class="text-end text-success">คะแนนพฤติกรรม คิดถ่วงน้ำหนัก <?= $compWeightTh ?> ในภาพรวม (ร้อยละ × <?= $compWeightTh ?>):</td>
                                 <td colspan="4"></td>
-                                <td class="text-success fs-5"><?= number_format($compScoreFinal, 2) ?> / <?= $isUnivOrGovt ? '๓๐' : '๒๐' ?></td>
+                                <td class="text-success fs-5"><?= number_format($compScoreFinal, 2) ?> / <?= $toTh((int)$compWeight) ?></td>
                             </tr>
                         </tfoot>
                     </table>
@@ -1837,7 +1854,7 @@ $isEvaluated = $isL1Evaluated || $isL2Evaluated || ($evaluation->status === Eval
                         <tfoot>
                             <tr class="fw-bold bg-light">
                                 <td colspan="4" class="text-end">ผลรวมคะแนนสรุปส่วนสมรรถนะ คิดถ่วงน้ำหนัก <?= $compWeightTh ?> ในภาพรวม:</td>
-                                <td class="text-center text-success fs-5"><?= number_format($compScoreFinal, 2) ?> / <?= $isUnivOrGovt ? '๓๐' : '๒๐' ?></td>
+                                <td class="text-center text-success fs-5"><?= number_format($compScoreFinal, 2) ?> / <?= $toTh((int)$compWeight) ?></td>
                             </tr>
                         </tfoot>
                     </table>

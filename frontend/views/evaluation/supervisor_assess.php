@@ -25,10 +25,10 @@ $isCivil = ($personnelType === 'CIVIL');
 $isUniv = ($personnelType === 'UNIVERSITY');
 $isGovt = ($personnelType === 'GOVT');
 $isSpecial = ($personnelType === 'SPECIAL');
-$perfWeight = 70.0;
-$compWeight = 30.0;
-$perfWeightTh = '๗๐%';
-$compWeightTh = '๓๐%';
+$perfWeight = $isSpecial ? 55.0 : ($isGovt ? 80.0 : 70.0);
+$compWeight = $isSpecial ? 45.0 : ($isGovt ? 20.0 : 30.0);
+$perfWeightTh = $isSpecial ? '๕๕' : ($isGovt ? '๘๐%' : '๗๐%');
+$compWeightTh = $isSpecial ? '๔๕' : ($isGovt ? '๒๐%' : '๓๐%');
 ?>
 
 <style>
@@ -137,11 +137,11 @@ $csrfToken = Yii::$app->request instanceof \yii\web\Request ? Yii::$app->request
         <!-- ========================================================================= -->
         <?php if (in_array($personnelType, ['CIVIL', 'UNIVERSITY'])): ?>
 
-            <!-- FORM 2: ผลสัมฤทธิ์ของงาน (80%) -->
+            <!-- FORM 2: ผลสัมฤทธิ์ของงาน (70%) -->
             <div class="card card-rmutt shadow-sm mb-4">
                 <div class="card-header bg-primary text-white py-3">
                     <h5 class="fw-bold mb-0 text-white">
-                        <i class="bi bi-journal-check me-2"></i> แบบ ป.ผ. : ผลสัมฤทธิ์ของงาน (ค่าน้ำหนักร้อยละ <?= ($isUniv || $isGovt) ? '๗๐' : '๘๐' ?>)
+                        <i class="bi bi-journal-check me-2"></i> แบบ ป.ผ. : ผลสัมฤทธิ์ของงาน (ค่าน้ำหนักร้อยละ <?= $perfWeightTh ?>)
                     </h5>
                 </div>
                 <div class="card-body p-0">

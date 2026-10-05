@@ -341,15 +341,15 @@ $this->title = 'หน้าหลัก - ระบบประเมินผ�
         <!-- 3. Government Employee -->
         <div class="col-md-6 col-lg-3">
             <div class="dash-guide-card border-top border-4 border-secondary">
-                <span class="dash-guide-pill bg-secondary-subtle text-secondary">สัดส่วน ๗๐ : ๓๐</span>
+                <span class="dash-guide-pill bg-secondary-subtle text-secondary">สัดส่วน ๘๐ : ๒๐</span>
                 <h6 class="fw-bold text-secondary mb-2">๓. พนักงานราชการทั่วไป</h6>
                 <div class="small text-secondary mb-2">
-                    <strong>ส่วนที่ ๒: ผลสัมฤทธิ์ของงาน (๗๐%)</strong>
+                    <strong>ส่วนที่ ๒: ผลสัมฤทธิ์ของงาน (๘๐%)</strong>
                     <div class="text-muted ms-2">• ภาระงานหลัก ๔ ปัจจัย (น้ำหนัก ๘๐%)</div>
                     <div class="text-muted ms-2">• ภาระงานรอง ๑๐ ข้อ (น้ำหนัก ๒๐%)</div>
                 </div>
                 <div class="small text-secondary">
-                    <strong>ส่วนที่ ๓: พฤติกรรม / สมรรถนะ (๓๐%)</strong>
+                    <strong>ส่วนที่ ๓: พฤติกรรม / สมรรถนะ (๒๐%)</strong>
                     <div class="text-muted ms-2">• ๕ สมรรถนะพฤติกรรมมาตรฐาน</div>
                 </div>
             </div>
