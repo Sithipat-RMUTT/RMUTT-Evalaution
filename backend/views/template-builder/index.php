@@ -156,8 +156,13 @@ $deptName = $targetDepartment ? $targetDepartment->name_th : 'แบบฟอร
                             <!-- 3. Scoring Structure -->
                             <td>
                                 <div class="small fw-semibold text-dark">
-                                    สัดส่วน: <?= !empty($weightStr) ? implode(' / ', $weightStr) : '70% / 30%' ?>
+                                    สัดส่วน: <?= is_array($weightStr) ? implode(' / ', $weightStr) : Html::encode($weightStr) ?>
                                 </div>
+                                <?php if ($pt->code === 'CIVIL' || $pt->code === 'UNIVERSITY'): ?>
+                                    <div class="small text-muted" style="font-size: 0.78rem;">
+                                        (ภาระงานหลัก 80% &bull; นโยบาย 15% &bull; คู่มือ 5%)
+                                    </div>
+                                <?php endif; ?>
                                 <div class="small text-muted mt-1">
                                     <i class="bi bi-list-check me-1"></i><?= $itemCount ?> ตัวชี้วัด (KPI)
                                 </div>

@@ -13,6 +13,25 @@ $this->title = 'พรีวิวแบบประเมิน: ' . $template-
 $this->params['breadcrumbs'][] = ['label' => 'จัดการแบบประเมิน', 'url' => ['index']];
 $this->params['breadcrumbs'][] = ['label' => $template->name_th, 'url' => ['builder', 'id' => $template->id]];
 $this->params['breadcrumbs'][] = 'พรีวิวเสมือนจริง';
+
+$policy7Options = [
+    '1' => 'งานบริการวิชาการหารายได้ตั้งแต่ ๑๐,๐๐๐.- บาทขึ้นไป (สะสมใน ๑ ปี)',
+    '2' => 'นวัตกรรม/สร้างสรรค์ โดยเป็นผู้ดำเนินการหลักหรือผู้ร่วมซึ่งมีส่วนร่วม ร้อยละ ๓๐ ขึ้นไป โดยใช้แบบฟอร์มการแสดงการมีส่วนร่วม',
+    '3' => 'การพัฒนาตนเองด้านภาษาต่างประเทศ (RT-TEP ๓.๕/ IELTS ๕.๕ /TOEFL ๔๐๐) หรือกิจกรรมด้านภาษาที่คณะกรรมการรับรอง / วิชาชีพเฉพาะทาง (ใบ Certificate จากระบบ Certiport)',
+    '4' => 'การเข้าร่วมกิจกรรมของสำนักฯ/มหาวิทยาลัยฯ ตั้งแต่ ๔ ครั้งขึ้นไป/รอบการประเมิน (ดังเอกสารแนบ)',
+    '5' => 'คณะกรรมการการดำเนินงานด้านต่าง ๆ ของสำนักฯ/มหาวิทยาลัยฯ ตั้งแต่ ๓ งาน/โครงการขึ้นไป (**สามารถสะสมได้ภายใน ๑ ปี)',
+    '6' => 'ปฏิบัติหน้าที่หัวหน้าฝ่าย (เท่ากับ ๒ ข้อ)',
+    '7' => 'ปฏิบัติหน้าที่หัวหน้างาน (เท่ากับ ๑ ข้อ)',
+];
+
+$acad5Levels = [
+    '0' => 'ระดับ ๐: ไม่มีการจัดทำ / ไม่เข้าเกณฑ์ (๐ คะแนน)',
+    '1' => 'ระดับ ๑: ยื่นผลงานให้ผู้ทรงคุณวุฒิภายนอก / ผู้เชี่ยวชาญพิจารณา (แนบเอกสารขอความอนุเคราะห์/ คำสั่งแต่งตั้ง) (๑ คะแนน)',
+    '2' => 'ระดับ ๒: ผ่านการพิจารณาจากผู้ทรงคุณวุฒิภายนอก / ผู้เชี่ยวชาญในงานที่เกี่ยวข้อง ตรวจเบื้องต้น (แนบแบบประเมินผลงาน) (๒ คะแนน)',
+    '3' => 'ระดับ ๓: ผ่านการพิจารณาผู้บังคับบัญชาภายในหน่วยงาน ส่งไปยัง กบค. (แนบบันทึกข้อความ) (๓ คะแนน)',
+    '4' => 'ระดับ ๔: อยู่ระหว่างการพิจารณาจาก กบค. (ใช้หลักฐานสถานะการดำเนินการจาก กบค.) (๔ คะแนน)',
+    '5' => 'ระดับ ๕: เผยแพร่ผลงานทางวิชาการ เป็นตำรา หนังสือบทความ และหรือ ได้ตำแหน่งที่สูงขึ้น (แนบคำสั่งแต่งตั้ง หรือหลักฐาน) (๕ คะแนน)',
+];
 ?>
 
 <div class="template-builder-preview py-3">
@@ -22,7 +41,7 @@ $this->params['breadcrumbs'][] = 'พรีวิวเสมือนจริ�
         <div>
             <i class="bi bi-eye-fill fs-5 me-2"></i>
             <strong>หน้าจอพรีวิวเสมือนจริง (Interactive Live Preview):</strong> 
-            ท่านสามารถทดลองคลิกเลือกระดับคะแนน 1-5 เพื่อดูการไฮไลต์และตรวจทานความถูกต้องของฟอร์มก่อนนำไปใช้จริง
+            จำลองแบบฟอร์มตามที่บุคลากรและคณะกรรมการจะเห็นจริงในระบบ
         </div>
         <div>
             <?= Html::a('<i class="bi bi-pencil-square me-1"></i> กลับไปแก้ไข', ['builder', 'id' => $template->id], ['class' => 'btn btn-sm btn-outline-primary']) ?>
@@ -30,7 +49,7 @@ $this->params['breadcrumbs'][] = 'พรีวิวเสมือนจริ�
     </div>
 
     <!-- Official Header Info Box -->
-    <div class="card card-rmutt p-4 shadow-sm mb-4 bg-light border-0">
+    <div class="card card-rmutt p-4 shadow-sm mb-4 bg-light border">
         <div class="text-center mb-3">
             <h5 class="fw-bold mb-1 text-dark"><?= Html::encode($template->name_th) ?></h5>
             <div class="text-muted small">
@@ -39,7 +58,7 @@ $this->params['breadcrumbs'][] = 'พรีวิวเสมือนจริ�
                 <?php else: ?>
                     <span class="text-warning-emphasis">แม่แบบมาตรฐานกลาง (ใช้ทุกหน่วยงาน)</span> | 
                 <?php endif; ?>
-                ประเภทบุคลากร: <strong><?= Html::encode($template->personnelType->name_th) ?></strong>
+                ประเภทบุคลากร: <strong><?= Html::encode($template->personnelType ? $template->personnelType->name_th : '-') ?></strong>
             </div>
             <?php if ($template->description): ?>
                 <p class="text-muted small mt-2 mb-0"><?= Html::encode($template->description) ?></p>
@@ -49,7 +68,7 @@ $this->params['breadcrumbs'][] = 'พรีวิวเสมือนจริ�
 
     <!-- RENDER SECTIONS & ITEMS -->
     <?php foreach ($sections as $sIdx => $section): ?>
-        <div class="card card-rmutt shadow-sm mb-4 border-0">
+        <div class="card card-rmutt shadow-sm mb-4 border">
             <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
                 <h6 class="fw-bold mb-0 text-white">
                     <i class="bi bi-journal-check me-2"></i> <?= Html::encode($section->name_th) ?>
@@ -68,7 +87,7 @@ $this->params['breadcrumbs'][] = 'พรีวิวเสมือนจริ�
                                 <tr>
                                     <th style="width: 50px;">#</th>
                                     <th>หัวข้อสมรรถนะ</th>
-                                    <th>คำนิยาม</th>
+                                    <th>คำนิยาม / พฤติกรรมที่บ่งชี้</th>
                                     <th style="width: 140px;" class="text-center">ระดับที่คาดหวัง</th>
                                     <th style="width: 220px;" class="text-center">ระดับที่ประเมินได้</th>
                                 </tr>
@@ -99,8 +118,42 @@ $this->params['breadcrumbs'][] = 'พรีวิวเสมือนจริ�
                         </table>
                     </div>
 
+                <?php elseif ($section->section_code === 'SECONDARY_POLICY' || strpos($section->name_th, '๕.๑') !== false): ?>
+                    <!-- Section 5.1: Policy Checklist Preview -->
+                    <div class="alert alert-success border-success small mb-3">
+                        <i class="bi bi-info-circle-fill me-1"></i>
+                        <strong>เกณฑ์การประเมิน:</strong> ดำเนินการ ๑ ข้อ = ๑ คะแนน | ๒ ข้อ = ๓ คะแนน | ๓ ข้อขึ้นไป = ๕ คะแนน (เต็ม ๕ คะแนน &rarr; คิดเป็นค่าน้ำหนัก ๑๕%)
+                    </div>
+                    <div class="list-group">
+                        <?php foreach ($policy7Options as $pIdx => $pText): ?>
+                            <label class="list-group-item list-group-item-action d-flex align-items-start gap-2 py-2">
+                                <input class="form-check-input flex-shrink-0 mt-1" type="checkbox" name="preview_policy_<?= $pIdx ?>" value="<?= $pIdx ?>">
+                                <span class="small">
+                                    <strong class="text-primary">ข้อ <?= $pIdx ?>:</strong> <?= Html::encode($pText) ?>
+                                </span>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+
+                <?php elseif ($section->section_code === 'SECONDARY_ACADEMIC' || strpos($section->name_th, '๕.๒') !== false): ?>
+                    <!-- Section 5.2: Academic Guide Preview -->
+                    <div class="alert alert-success border-success small mb-3">
+                        <i class="bi bi-info-circle-fill me-1"></i>
+                        <strong>เกณฑ์การประเมิน:</strong> ประเมินตามระดับความก้าวหน้า ๐ - ๕ คะแนน (เต็ม ๕ คะแนน &rarr; คิดเป็นค่าน้ำหนัก ๕%)
+                    </div>
+                    <div class="list-group">
+                        <?php foreach ($acad5Levels as $aLvl => $aText): ?>
+                            <label class="list-group-item list-group-item-action d-flex align-items-start gap-2 py-2">
+                                <input class="form-check-input flex-shrink-0 mt-1" type="radio" name="preview_academic" value="<?= $aLvl ?>" <?= $aLvl == 0 ? 'checked' : '' ?>>
+                                <span class="small">
+                                    <strong class="text-primary"><?= $aLvl ?> คะแนน:</strong> <?= Html::encode($aText) ?>
+                                </span>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+
                 <?php else: ?>
-                    <!-- KPI Items with PDCA 1-5 Levels -->
+                    <!-- KPI Items with PDCA 1-5 Levels or Direct Score -->
                     <?php foreach ($section->items as $iIdx => $item): ?>
                         <div class="card p-3 mb-3 border bg-light shadow-none">
                             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -110,7 +163,7 @@ $this->params['breadcrumbs'][] = 'พรีวิวเสมือนจริ�
                                 </div>
                                 <div>
                                     <span class="badge bg-info-subtle text-dark border border-info-subtle me-2">
-                                        น้ำหนัก <?= number_format($item->max_weight, 0) ?>%
+                                        น้ำหนัก <?= number_format($item->max_weight > 0 ? $item->max_weight : $item->max_score, 0) ?>%
                                     </span>
                                     <?php if ($item->requires_evidence): ?>
                                         <span class="badge bg-warning-subtle text-dark border border-warning-subtle">
@@ -127,6 +180,13 @@ $this->params['breadcrumbs'][] = 'พรีวิวเสมือนจริ�
                                 foreach ($item->criteria as $c) {
                                     $critMap[$c->level_value] = $c->description;
                                 }
+                                $defaultDescriptions = [
+                                    1 => 'มีแผนการดำเนินงาน/แนวทางการดำเนินงาน',
+                                    2 => 'ดำเนินการตามแผน/แนวทางที่กำหนด',
+                                    3 => 'ทบทวน ตรวจสอบ ประเมินผลการดำเนินงาน',
+                                    4 => 'แก้ไขปรับปรุงกระบวนการ',
+                                    5 => 'ปรับปรุงต่อเนื่อง สร้างคุณค่าเพิ่มหรือนวัตกรรม',
+                                ];
                                 $pdcaTitles = [
                                     1 => 'ระดับ 1 (Plan): ',
                                     2 => 'ระดับ 2 (Do): ',
@@ -135,7 +195,7 @@ $this->params['breadcrumbs'][] = 'พรีวิวเสมือนจริ�
                                     5 => 'ระดับ 5 (Impact): ',
                                 ];
                                 for ($lvl = 1; $lvl <= 5; $lvl++):
-                                    $desc = $critMap[$lvl] ?? "เกณฑ์ความสำเร็จระดับ {$lvl}";
+                                    $desc = $critMap[$lvl] ?? ($defaultDescriptions[$lvl] ?? "เกณฑ์ความสำเร็จระดับ {$lvl}");
                                 ?>
                                     <label class="list-group-item list-group-item-action d-flex align-items-start gap-2 py-2 criteria-row-<?= $item->id ?>" id="crit-label-<?= $item->id ?>-<?= $lvl ?>" style="cursor: pointer;">
                                         <input class="form-check-input flex-shrink-0 mt-1" type="radio" name="preview_item_<?= $item->id ?>" value="<?= $lvl ?>" onchange="highlightPreviewCrit(<?= $item->id ?>, <?= $lvl ?>)">

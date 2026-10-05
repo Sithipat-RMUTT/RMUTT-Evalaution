@@ -9,6 +9,8 @@ use yii\helpers\Url;
 /** @var common\models\EvaluationSection[] $sections */
 /** @var common\models\CompetencyDefinition[] $competencies */
 /** @var float $totalSectionWeight */
+/** @var float|null $perfWeight */
+/** @var float|null $compWeight */
 /** @var common\models\Department[] $departments */
 
 $this->title = 'จัดการแบบประเมินผลการปฏิบัติงาน: ' . $template->name_th;
@@ -21,6 +23,102 @@ $csrfToken = Yii::$app->request instanceof \yii\web\Request ? Yii::$app->request
 $ptCode = $template->personnelType ? $template->personnelType->code : '';
 $isSpecial = ($ptCode === 'SPECIAL');
 $isCivilOrUniv = ($ptCode === 'CIVIL' || $ptCode === 'UNIVERSITY');
+$isGovt = ($ptCode === 'GOVT');
+
+$perfWeight = $perfWeight ?? ($isSpecial ? 55.0 : ($isGovt ? 80.0 : 70.0));
+$compWeight = $compWeight ?? ($isSpecial ? 45.0 : ($isGovt ? 20.0 : 30.0));
+
+// Find sections for CIVIL/UNIVERSITY
+$secMain = null;
+$secPolicy = null;
+$secAcad = null;
+$secComp = null;
+
+// Find sections for SPECIAL
+$secSpec1 = null;
+$secSpec2 = null;
+
+// Find sections for GOVT
+$secGovt1 = null;
+$secGovt2 = null;
+$secGovt3 = null;
+
+foreach ($sections as $s) {
+    if ($s->section_code === 'MAIN_WORK' || $s->section_type === 'main_work') {
+        if (!$secMain) $secMain = $s;
+    } elseif ($s->section_code === 'SECONDARY_POLICY' || ($s->section_type === 'secondary_work' && (strpos($s->name_th, '๕.๑') !== false || strpos($s->name_th, '5.1') !== false))) {
+        $secPolicy = $s;
+    } elseif ($s->section_code === 'SECONDARY_ACADEMIC' || ($s->section_type === 'secondary_work' && (strpos($s->name_th, '๕.๒') !== false || strpos($s->name_th, '5.2') !== false))) {
+        $secAcad = $s;
+    } elseif ($s->section_code === 'COMPETENCY_EVAL' || $s->section_type === 'competency') {
+        $secComp = $s;
+    } elseif (in_array($s->section_code, ['SPEC_PERFORMANCE', 'SPEC_SECTION_1'])) {
+        $secSpec1 = $s;
+    } elseif (in_array($s->section_code, ['SPEC_CHARACTERISTICS', 'SPEC_SECTION_2'])) {
+        $secSpec2 = $s;
+    } elseif (in_array($s->section_code, ['GOVT_MAIN_WORK', 'GOVT_SECTION_1'])) {
+        $secGovt1 = $s;
+    } elseif (in_array($s->section_code, ['GOVT_SECONDARY_WORK', 'GOVT_SECTION_2'])) {
+        $secGovt2 = $s;
+    } elseif (in_array($s->section_code, ['GOVT_BEHAVIOR', 'GOVT_SECTION_3'])) {
+        $secGovt3 = $s;
+    }
+}
+
+// Fallback assignments
+if ($isCivilOrUniv) {
+    if (!$secMain && !empty($sections)) $secMain = $sections[0];
+    if (!$secPolicy && count($sections) > 1) $secPolicy = $sections[1];
+    if (!$secAcad && count($sections) > 2) $secAcad = $sections[2];
+    if (!$secComp && count($sections) > 3) $secComp = $sections[3];
+} elseif ($isSpecial) {
+    if (!$secSpec1 && !empty($sections)) $secSpec1 = $sections[0];
+    if (!$secSpec2 && count($sections) > 1) $secSpec2 = $sections[1];
+} elseif ($isGovt) {
+    if (!$secGovt1 && !empty($sections)) $secGovt1 = $sections[0];
+    if (!$secGovt2 && count($sections) > 1) $secGovt2 = $sections[1];
+    if (!$secGovt3 && count($sections) > 2) $secGovt3 = $sections[2];
+}
+
+$policy7Options = [
+    '1' => 'งานบริการวิชาการหารายได้ตั้งแต่ ๑๐,๐๐๐.- บาทขึ้นไป (สะสมใน ๑ ปี)',
+    '2' => 'นวัตกรรม/สร้างสรรค์ โดยเป็นผู้ดำเนินการหลักหรือผู้ร่วมซึ่งมีส่วนร่วม ร้อยละ ๓๐ ขึ้นไป โดยใช้แบบฟอร์มการแสดงการมีส่วนร่วม',
+    '3' => 'การพัฒนาตนเองด้านภาษาต่างประเทศ (RT-TEP ๓.๕/ IELTS ๕.๕ /TOEFL ๔๐๐) หรือกิจกรรมด้านภาษาที่คณะกรรมการรับรอง / วิชาชีพเฉพาะทาง (ใบ Certificate จากระบบ Certiport)',
+    '4' => 'การเข้าร่วมกิจกรรมของสำนักฯ/มหาวิทยาลัยฯ ตั้งแต่ ๔ ครั้งขึ้นไป/รอบการประเมิน (ดังเอกสารแนบ)',
+    '5' => 'คณะกรรมการการดำเนินงานด้านต่าง ๆ ของสำนักฯ/มหาวิทยาลัยฯ ตั้งแต่ ๓ งาน/โครงการขึ้นไป (**สามารถสะสมได้ภายใน ๑ ปี)',
+    '6' => 'ปฏิบัติหน้าที่หัวหน้าฝ่าย (เท่ากับ ๒ ข้อ)',
+    '7' => 'ปฏิบัติหน้าที่หัวหน้างาน (เท่ากับ ๑ ข้อ)',
+];
+
+$acad5Levels = [
+    '0' => 'ระดับ ๐: ไม่มีการจัดทำ / ไม่เข้าเกณฑ์ (๐ คะแนน)',
+    '1' => 'ระดับ ๑: ยื่นผลงานให้ผู้ทรงคุณวุฒิภายนอก / ผู้เชี่ยวชาญพิจารณา (แนบเอกสารขอความอนุเคราะห์/ คำสั่งแต่งตั้ง) (๑ คะแนน)',
+    '2' => 'ระดับ ๒: ผ่านการพิจารณาจากผู้ทรงคุณวุฒิภายนอก / ผู้เชี่ยวชาญในงานที่เกี่ยวข้อง ตรวจเบื้องต้น (แนบแบบประเมินผลงาน) (๒ คะแนน)',
+    '3' => 'ระดับ ๓: ผ่านการพิจารณาผู้บังคับบัญชาภายในหน่วยงาน ส่งไปยัง กบค. (แนบบันทึกข้อความ) (๓ คะแนน)',
+    '4' => 'ระดับ ๔: อยู่ระหว่างการพิจารณาจาก กบค. (ใช้หลักฐานสถานะการดำเนินการจาก กบค.) (๔ คะแนน)',
+    '5' => 'ระดับ ๕: เผยแพร่ผลงานทางวิชาการ เป็นตำรา หนังสือบทความ และหรือ ได้ตำแหน่งที่สูงขึ้น (แนบคำสั่งแต่งตั้ง หรือหลักฐาน) (๕ คะแนน)',
+];
+
+$spec10Options = [
+    '1' => 'เข้าร่วมกิจกรรม/โครงการ/งานของสำนักฯ และมหาวิทยาลัย',
+    '2' => 'ดำเนินงานผลสัมฤทธิ์ที่สำคัญ (Key Results - KR) ตามประเด็นยุทธศาสตร์ของสำนักฯ',
+    '3' => 'เป็นคณะทำงานหรือมีส่วนร่วมในการดำเนินงาน เช่น งานความเสี่ยง / KM / งาน EdPEx',
+    '4' => 'มีนวัตกรรมหรือการพัฒนากระบวนการทำงาน / การทำ LEAN Management / การทำ Kaizen',
+    '5' => 'เข้าร่วมฝึกทักษะ หรือพัฒนาสมรรถนะวิชาชีพ และมีการรายงานการนำไปใช้ประโยชน์',
+    '6' => 'ได้รับการพัฒนาตนเองผ่านมาตรฐาน Certified จากหน่วยงานภายนอก ที่เกี่ยวข้องกับหน้าที่',
+    '7' => 'พัฒนาศักยภาพด้านการใช้ภาษาอังกฤษของสายสนับสนุน (เรียน/เข้าอบรม/ผ่านการทดสอบ)',
+    '8' => 'งานวิจัย / งานส่งเสริมความเป็นนานาชาติ / งานบริการวิชาการ / งานทำนุบำรุงศิลปวัฒนธรรม',
+    '9' => 'การหารายได้เข้าสำนักฯ และมหาวิทยาลัย',
+    '10' => 'ภาระงานอื่น ๆ ตามที่ผู้บังคับบัญชามอบหมาย',
+];
+
+$defaultPdcaDescriptions = [
+    1 => 'มีแผนการดำเนินงาน/แนวทางการดำเนินงาน (Plan)',
+    2 => 'ดำเนินการตามแผน/แนวทางที่กำหนด (Do)',
+    3 => 'ทบทวน ตรวจสอบ ประเมินผลการดำเนินงาน (Check)',
+    4 => 'แก้ไขปรับปรุงกระบวนการ มีคู่มือหรือแนวทางปฏิบัติที่พัฒนาขึ้น (Act)',
+    5 => 'ปรับปรุงต่อเนื่อง สร้างคุณค่าเพิ่มหรือนวัตกรรม เกิดผลลัพธ์ที่เป็นประโยชน์สูง (Impact)',
+];
 ?>
 
 <style>
@@ -73,6 +171,13 @@ $isCivilOrUniv = ($ptCode === 'CIVIL' || $ptCode === 'UNIVERSITY');
 .table-eval td {
     vertical-align: middle;
 }
+
+.rule-box {
+    background-color: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 6px;
+    padding: 10px 14px;
+}
 </style>
 
 <div class="template-builder-view py-3 official-form-doc">
@@ -101,19 +206,44 @@ $isCivilOrUniv = ($ptCode === 'CIVIL' || $ptCode === 'UNIVERSITY');
 
                 <!-- Right: Weight Meter & Actions -->
                 <div class="d-flex align-items-center gap-3">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="small text-muted">น้ำหนักรวมทุกหมวด:</span>
-                        <span class="badge <?= $totalSectionWeight == 100 ? 'bg-success' : 'bg-danger' ?> fs-6" id="total-weight-badge">
-                            <span id="total-weight-num"><?= number_format($totalSectionWeight, 0) ?></span>% / 100%
-                        </span>
-                        <span id="weight-status-icon">
-                            <?php if ($totalSectionWeight == 100): ?>
-                                <i class="bi bi-check-circle-fill text-success" title="น้ำหนักรวมครบ 100% ถูกต้อง"></i>
-                            <?php else: ?>
-                                <i class="bi bi-exclamation-triangle-fill text-danger" title="น้ำหนักรวมควรได้ 100%"></i>
-                            <?php endif; ?>
-                        </span>
-                    </div>
+                    <?php if ($isCivilOrUniv): ?>
+                        <!-- CIVIL & UNIVERSITY: Show Form 2 (100%) and Overall (70% / 30%) -->
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="small text-muted">แบบ ป.ผ. ผลสัมฤทธิ์:</span>
+                            <span class="badge bg-success fs-6" id="form2-weight-badge">
+                                <span id="form2-weight-num">100</span>% / 100%
+                            </span>
+                            <span class="small text-muted ms-2">ภาพรวม:</span>
+                            <span class="badge bg-primary fs-6" id="overall-weight-badge">
+                                ผลสัมฤทธิ์ <?= intval($perfWeight) ?>% + สมรรถนะ <?= intval($compWeight) ?>% = 100%
+                            </span>
+                            <i class="bi bi-check-circle-fill text-success fs-5" title="สัดส่วนคะแนนถูกต้องสมบูรณ์ตามระเบียบมหาวิทยาลัย"></i>
+                        </div>
+                    <?php elseif ($isSpecial): ?>
+                        <!-- SPECIAL: 55 + 45 = 100 Points -->
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="small text-muted">คะแนนเต็มรวม:</span>
+                            <span class="badge bg-success fs-6" id="total-weight-badge">
+                                <span id="total-weight-num">100</span> / 100 คะแนน
+                            </span>
+                            <span class="badge bg-info text-dark fs-6">
+                                ผลงาน 55 + คุณลักษณะ 45
+                            </span>
+                            <i class="bi bi-check-circle-fill text-success fs-5" title="คะแนนเต็มรวม 100 คะแนนถูกต้อง"></i>
+                        </div>
+                    <?php elseif ($isGovt): ?>
+                        <!-- GOVT: 80% + 20% = 100% -->
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="small text-muted">สัดส่วนรวม:</span>
+                            <span class="badge bg-success fs-6" id="total-weight-badge">
+                                <span id="total-weight-num">100</span>% / 100%
+                            </span>
+                            <span class="badge bg-primary fs-6">
+                                ผลสัมฤทธิ์ 80% + พฤติกรรม 20%
+                            </span>
+                            <i class="bi bi-check-circle-fill text-success fs-5" title="สัดส่วนครบ 100% ถูกต้อง"></i>
+                        </div>
+                    <?php endif; ?>
 
                     <?= Html::a('<i class="bi bi-eye-fill me-1"></i> ดูตัวอย่างฟอร์มจริง (Live Preview)', ['preview', 'id' => $template->id], [
                         'class' => 'btn btn-sm btn-outline-info text-dark shadow-sm',
@@ -130,7 +260,7 @@ $isCivilOrUniv = ($ptCode === 'CIVIL' || $ptCode === 'UNIVERSITY');
         </div>
     </div>
 
-    <!-- 2. Official Document Header Card (Same as self_assess.php) -->
+    <!-- 2. Official Document Header Card (Exact styling from self_assess.php) -->
     <div class="card card-rmutt shadow-sm mb-4 bg-light border">
         <div class="card-body p-4">
             <div class="text-center mb-3">
@@ -154,271 +284,198 @@ $isCivilOrUniv = ($ptCode === 'CIVIL' || $ptCode === 'UNIVERSITY');
                 </div>
                 <div class="col-md-3">
                     <strong>สถานะแบบฟอร์ม:</strong> <span class="badge bg-success">ใช้งานประจำหน่วยงาน</span><br>
-                    <span class="text-muted small">แก้ไขตัวชี้วัด เกณฑ์คะแนน หรือค่าน้ำหนักได้ในตารางด้านล่าง</span>
+                    <span class="text-muted small">ปรับแต่งตัวชี้วัด (KPI) หรือเกณฑ์คะแนนตามภาระงานของหน่วยงาน</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 3. RENDER SECTIONS & EVALUATION TABLES (Exact Official Evaluation Layout) -->
-    <?php 
-    $competencyRendered = false;
-    foreach ($sections as $sIdx => $section): 
-    ?>
-        <?php if ($section->section_type === 'competency'): 
-            $competencyRendered = true;
-        ?>
-            <!-- ========================================== -->
-            <!-- SECTION TYPE: COMPETENCY TABLE (แบบ พม.)   -->
-            <!-- ========================================== -->
-            <div class="card card-rmutt shadow-sm mb-4 section-block" data-section-id="<?= $section->id ?>" data-section-type="competency">
-                <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center gap-2 flex-grow-1 me-3">
-                        <i class="bi bi-award-fill fs-5"></i>
-                        <input type="text" class="form-control form-control-sm fw-bold section-name-input text-white border-0" 
-                               style="background-color: rgba(255,255,255,0.2) !important; max-width: 500px;" 
-                               value="<?= Html::encode($section->name_th) ?>" placeholder="ชื่อหมวดสมรรถนะ...">
-                    </div>
-                    <div class="d-flex align-items-center gap-2 flex-shrink-0">
-                        <span class="text-white-50 small">ค่าน้ำหนักหมวด:</span>
-                        <div class="input-group input-group-sm" style="width: 105px;">
-                            <input type="number" step="0.5" min="0" max="100" class="form-control form-control-sm text-center fw-bold section-weight-input" 
-                                   value="<?= $section->weight ?>" oninput="recalcTotals()">
-                            <span class="input-group-text px-1">%</span>
+    <!-- ========================================================================================= -->
+    <!-- CASE 1: CIVIL & UNIVERSITY (ข้าราชการพลเรือน และ พนักงานมหาวิทยาลัย)                         -->
+    <!-- Exactly mirroring self_assess.php: แบบ ป.ผ. (ผลสัมฤทธิ์ 100%) + แบบ พม. (สมรรถนะ 30%)      -->
+    <!-- ========================================================================================= -->
+    <?php if ($isCivilOrUniv): ?>
+
+        <!-- =================================================================== -->
+        <!-- CARD 1: ๒. แบบข้อตกลงและประเมินผลสัมฤทธิ์ของงาน (แบบ ป.ผ.) - ๑๐๐%   -->
+        <!-- =================================================================== -->
+        <div class="card card-rmutt shadow-sm mb-4 border-primary">
+            <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="fw-bold mb-0 text-white">
+                        <i class="bi bi-file-earmark-text-fill me-2"></i>๒. แบบข้อตกลงและประเมินผลสัมฤทธิ์ของงาน (แบบ ป.ผ.)
+                    </h5>
+                    <small class="text-white-50">
+                        ประกอบด้วย: ภาระงานหลัก (๘๐%) &bull; งานนโยบาย ๕.๑ (๑๕%) &bull; คู่มือวิชาการ ๕.๒ (๕%) = รวม ๑๐๐% (ถ่วงน้ำหนักภาพรวม <?= intval($perfWeight) ?>%)
+                    </small>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-white text-primary fw-bold fs-6">
+                        ค่าน้ำหนักรวม ๑๐๐% (ถ่วงภาพรวม <?= intval($perfWeight) ?>%)
+                    </span>
+                </div>
+            </div>
+
+            <div class="card-body p-4">
+
+                <!-- ------------------------------------------------------------- -->
+                <!-- 1.1 ภาระงานหลัก (MAIN_WORK) - ค่าน้ำหนัก 80%                   -->
+                <!-- ------------------------------------------------------------- -->
+                <div class="section-block mb-4 p-3 border rounded bg-white" 
+                     data-section-id="<?= $secMain ? $secMain->id : 0 ?>" 
+                     data-section-type="main_work"
+                     data-section-code="MAIN_WORK">
+                    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary text-white fw-bold">ส่วนที่ ๑</span>
+                            <span class="fw-bold fs-6 text-dark">
+                                ภาระงานหลัก (กิจกรรม/โครงการ/งาน และระดับความสำเร็จตามวงจร PDCA)
+                            </span>
+                            <input type="hidden" class="section-name-input" value="แบบข้อตกลงการประเมินผลสัมฤทธิ์ของงาน: ภาระงานหลัก (ค่าน้ำหนัก 80)">
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="text-muted small">ค่าน้ำหนักหมวด:</span>
+                            <div class="input-group input-group-sm" style="width: 105px;">
+                                <input type="number" step="0.5" min="0" max="100" class="form-control form-control-sm text-center fw-bold section-weight-input" 
+                                       value="<?= $secMain ? $secMain->weight : 80 ?>" oninput="recalcTotals()" id="sec-main-weight">
+                                <span class="input-group-text px-1">%</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="card-body p-0">
+
                     <div class="table-responsive">
-                        <table class="table table-bordered table-hover align-middle mb-0 table-eval" id="comp-table">
-                            <thead class="table-light text-center">
+                        <table class="table table-bordered align-middle mb-0 table-eval kpi-table" id="main-work-table">
+                            <thead class="table-light text-center align-middle">
                                 <tr>
-                                    <th style="width: 50px;">#</th>
-                                    <th style="min-width: 250px;">หัวข้อสมรรถนะ (Competency)</th>
-                                    <th style="min-width: 320px;">คำนิยาม / พฤติกรรมที่บ่งชี้</th>
-                                    <th style="width: 180px;">ประเภทสมรรถนะ</th>
-                                    <th style="width: 140px;">ระดับที่คาดหวัง</th>
-                                    <th style="width: 50px;">ลบ</th>
+                                    <th style="width: 45px;">#</th>
+                                    <th style="min-width: 280px;">(๑) กิจกรรม / โครงการ / ภาระงานหลัก หรือ ตัวชี้วัด</th>
+                                    <th style="min-width: 540px;">(๒) เกณฑ์ระดับค่าเป้าหมายความสำเร็จ (ตามวงจร PDCA ๑ - ๕)</th>
+                                    <th style="width: 110px;">(๓)<br>น้ำหนัก (%)</th>
+                                    <th style="width: 50px;">จัดการ</th>
                                 </tr>
                             </thead>
-                            <tbody id="comp-tbody">
-                                <?php foreach ($competencies as $cIdx => $comp): ?>
-                                    <tr class="comp-row" data-comp-id="<?= $comp->id ?>">
-                                        <td class="text-center fw-bold comp-row-num"><?= $cIdx + 1 ?></td>
+                            <tbody class="kpi-tbody" id="main-work-tbody">
+                                <?php 
+                                $mainItems = ($secMain && !empty($secMain->items)) ? $secMain->items : [];
+                                if (empty($mainItems)): 
+                                ?>
+                                    <!-- Default KPI Row if none exist yet -->
+                                    <tr class="kpi-row" data-item-id="">
+                                        <td class="text-center fw-bold kpi-row-number">1</td>
                                         <td>
-                                            <input type="text" class="form-control form-control-sm fw-semibold comp-name-input" 
-                                                   value="<?= Html::encode($comp->name_th) ?>" placeholder="ชื่อสมรรถนะ...">
+                                            <textarea class="form-control form-control-sm item-name-input fw-semibold mb-1" rows="3" 
+                                                      placeholder="ระบุกิจกรรม/โครงการ/ภาระงานหลัก หรือตัวชี้วัดของหน่วยงาน...">ภาระงานหลักและโครงการตามพันธกิจของหน่วยงาน</textarea>
+                                            <div class="d-flex align-items-center justify-content-between mt-1">
+                                                <div class="form-check small mb-0">
+                                                    <input class="form-check-input item-ev-input" type="checkbox" id="ev_new_1">
+                                                    <label class="form-check-label text-muted" for="ev_new_1">
+                                                        <i class="bi bi-paperclip"></i> บังคับแนบหลักฐาน
+                                                    </label>
+                                                </div>
+                                                <input type="hidden" class="item-type-select" value="pdca_level">
+                                            </div>
                                         </td>
                                         <td>
-                                            <textarea class="form-control form-control-sm comp-def-input" rows="2" 
-                                                      placeholder="คำนิยามหรือพฤติกรรมบ่งชี้..."><?= Html::encode($comp->definition) ?></textarea>
-                                        </td>
-                                        <td>
-                                            <select class="form-select form-select-sm comp-type-input">
-                                                <option value="core" <?= $comp->competency_type === 'core' ? 'selected' : '' ?>>สมรรถนะหลัก (Core)</option>
-                                                <option value="functional" <?= $comp->competency_type === 'functional' ? 'selected' : '' ?>>สมรรถนะประจำสายงาน (Functional)</option>
-                                            </select>
+                                            <div class="pdca-box">
+                                                <div class="mb-1 d-flex align-items-center gap-1.5">
+                                                    <span class="badge bg-secondary-subtle text-dark border level-badge-lbl">ระดับ ๑ (Plan)</span>
+                                                    <input type="text" class="form-control form-control-sm crit-input-1" value="<?= Html::encode($defaultPdcaDescriptions[1]) ?>" placeholder="ระดับ 1...">
+                                                </div>
+                                                <div class="mb-1 d-flex align-items-center gap-1.5">
+                                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle level-badge-lbl">ระดับ ๒ (Do)</span>
+                                                    <input type="text" class="form-control form-control-sm crit-input-2" value="<?= Html::encode($defaultPdcaDescriptions[2]) ?>" placeholder="ระดับ 2...">
+                                                </div>
+                                                <div class="mb-1 d-flex align-items-center gap-1.5">
+                                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle level-badge-lbl">ระดับ ๓ (Check)</span>
+                                                    <input type="text" class="form-control form-control-sm crit-input-3" value="<?= Html::encode($defaultPdcaDescriptions[3]) ?>" placeholder="ระดับ 3...">
+                                                </div>
+                                                <div class="mb-1 d-flex align-items-center gap-1.5">
+                                                    <span class="badge bg-success-subtle text-success border border-success-subtle level-badge-lbl">ระดับ ๔ (Act)</span>
+                                                    <input type="text" class="form-control form-control-sm crit-input-4" value="<?= Html::encode($defaultPdcaDescriptions[4]) ?>" placeholder="ระดับ 4...">
+                                                </div>
+                                                <div class="d-flex align-items-center gap-1.5">
+                                                    <span class="badge border level-badge-lbl" style="background-color: #f3e8ff; color: #6b21a8; border-color: #d8b4fe;">ระดับ ๕ (Impact)</span>
+                                                    <input type="text" class="form-control form-control-sm crit-input-5" value="<?= Html::encode($defaultPdcaDescriptions[5]) ?>" placeholder="ระดับ 5...">
+                                                </div>
+                                            </div>
                                         </td>
                                         <td class="text-center">
-                                            <select class="form-select form-select-sm text-center fw-bold text-primary comp-level-input">
-                                                <?php for ($lvl = 1; $lvl <= 5; $lvl++): ?>
-                                                    <option value="<?= $lvl ?>" <?= $comp->expected_level == $lvl ? 'selected' : '' ?>>ระดับ <?= $lvl ?></option>
-                                                <?php endfor; ?>
-                                            </select>
+                                            <div class="input-group input-group-sm justify-content-center" style="max-width: 95px; margin: 0 auto;">
+                                                <input type="number" step="0.5" min="0" max="80" class="form-control form-control-sm text-center fw-bold item-weight-input main-item-weight" 
+                                                       value="80" oninput="recalcTotals()">
+                                                <span class="input-group-text px-1 text-muted">%</span>
+                                            </div>
                                         </td>
                                         <td class="text-center">
-                                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeCompRow(this)" title="ลบสมรรถนะนี้">
+                                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeKpiRow(this)" title="ลบรายการนี้">
                                                 <i class="bi bi-trash"></i>
                                             </button>
                                         </td>
                                     </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                            <tfoot class="table-light">
-                                <tr>
-                                    <td colspan="6" class="p-2.5">
-                                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="addBlankCompRow()">
-                                                <i class="bi bi-plus-circle me-1"></i> เพิ่มรายการสมรรถนะใหม่
-                                            </button>
-                                            <button type="button" class="btn btn-sm btn-primary shadow-sm" onclick="openCompetencyPoolModal()">
-                                                <i class="bi bi-stars me-1"></i> ดึงจากคลังสมรรถนะ มหาวิทยาลัย
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-        <?php else: 
-            // Determine if this section is Direct Score (e.g. SPECIAL employee) or PDCA Level
-            $hasAnyCriteria = false;
-            foreach ($section->items as $it) {
-                if ($it->input_type === 'pdca_level' || count($it->criteria) > 0) {
-                    $hasAnyCriteria = true;
-                    break;
-                }
-            }
-            $isDirectScore = !$hasAnyCriteria && ($isSpecial || $section->section_type === 'general' || $section->items && $section->items[0]->input_type === 'score_direct');
-        ?>
-            <!-- ============================================================== -->
-            <!-- SECTION TYPE: PERFORMANCE / WORK (แบบ ป.ผ. หรือ ด้านผลงาน)     -->
-            <!-- ============================================================== -->
-            <div class="card card-rmutt shadow-sm mb-4 section-block" data-section-id="<?= $section->id ?>" data-section-type="<?= Html::encode($section->section_type) ?>">
-                <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center gap-2 flex-grow-1 me-3">
-                        <span class="badge bg-white text-primary fw-bold">หมวดที่ <?= $sIdx + 1 ?></span>
-                        <input type="text" class="form-control form-control-sm fw-bold section-name-input text-white border-0" 
-                               style="background-color: rgba(255,255,255,0.2) !important; max-width: 500px;" 
-                               value="<?= Html::encode($section->name_th) ?>" placeholder="ชื่อหมวดการประเมิน...">
-                    </div>
-                    <div class="d-flex align-items-center gap-2 flex-shrink-0">
-                        <span class="text-white-50 small"><?= $isDirectScore ? 'คะแนนเต็มหมวด:' : 'ค่าน้ำหนักหมวด:' ?></span>
-                        <div class="input-group input-group-sm" style="width: 110px;">
-                            <input type="number" step="0.5" min="0" max="100" class="form-control form-control-sm text-center fw-bold section-weight-input" 
-                                   value="<?= $section->weight ?>" oninput="recalcTotals()">
-                            <span class="input-group-text px-1"><?= $isDirectScore ? 'คะแนน' : '%' ?></span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-bordered align-middle mb-0 table-eval kpi-table">
-                            <thead class="table-light text-center align-middle">
-                                <?php if ($isDirectScore): ?>
-                                    <!-- Direct Score Table Header (พนักงานพิเศษเงินรายได้ / คะแนนตรง) -->
-                                    <tr>
-                                        <th style="width: 50px;">ข้อ</th>
-                                        <th style="min-width: 320px;">รายการประเมิน / รายละเอียดภาระงาน</th>
-                                        <th style="width: 140px;">คะแนนเต็ม</th>
-                                        <th style="width: 60px;">จัดการ</th>
-                                    </tr>
                                 <?php else: ?>
-                                    <!-- Official PDCA Table Header (แบบ ป.ผ. ข้าราชการ & พนักงานมหาวิทยาลัย) -->
-                                    <tr>
-                                        <th style="width: 45px;">#</th>
-                                        <th style="min-width: 260px;">(๑) กิจกรรม / โครงการ / ภาระงาน หรือ ตัวชี้วัด</th>
-                                        <th style="min-width: 520px;">(๒) เกณฑ์ระดับค่าเป้าหมายความสำเร็จ (PDCA ๑ - ๕)</th>
-                                        <th style="width: 110px;">(๓)<br>น้ำหนัก (%)</th>
-                                        <th style="width: 50px;">ลบ</th>
-                                    </tr>
-                                <?php endif; ?>
-                            </thead>
-
-                            <tbody class="kpi-tbody">
-                                <?php if (empty($section->items)): ?>
-                                    <tr class="empty-kpi-row">
-                                        <td colspan="<?= $isDirectScore ? 4 : 5 ?>" class="text-center py-4 text-muted">
-                                            ยังไม่มีรายการตัวชี้วัดในหมวดนี้ กรุณากดปุ่ม <strong>"+ เพิ่มรายการ"</strong> ด้านล่าง
-                                        </td>
-                                    </tr>
-                                <?php else: ?>
-                                    <?php foreach ($section->items as $iIdx => $item): 
+                                    <?php foreach ($mainItems as $iIdx => $item): 
                                         $critMap = [];
                                         foreach ($item->criteria as $crit) {
                                             $critMap[$crit->level_value] = $crit->description;
                                         }
-                                        $scoreVal = !empty($item->max_score) ? $item->max_score : $item->max_weight;
+                                        $wVal = $item->max_weight > 0 ? $item->max_weight : 80;
                                     ?>
                                         <tr class="kpi-row" data-item-id="<?= $item->id ?>">
-                                            <!-- Column 1: Row Number -->
-                                            <td class="text-center fw-bold kpi-row-number">
-                                                <?= $iIdx + 1 ?>
+                                            <td class="text-center fw-bold kpi-row-number"><?= $iIdx + 1 ?></td>
+                                            <td>
+                                                <textarea class="form-control form-control-sm item-name-input fw-semibold mb-1" rows="3" 
+                                                          placeholder="ระบุกิจกรรม/โครงการ/ภาระงานหลัก หรือตัวชี้วัด..."><?= Html::encode($item->name_th) ?></textarea>
+                                                <div class="d-flex align-items-center justify-content-between mt-1">
+                                                    <div class="form-check small mb-0">
+                                                        <input class="form-check-input item-ev-input" type="checkbox" id="ev_<?= $item->id ?>" <?= $item->requires_evidence ? 'checked' : '' ?>>
+                                                        <label class="form-check-label text-muted" for="ev_<?= $item->id ?>">
+                                                            <i class="bi bi-paperclip"></i> บังคับแนบหลักฐาน
+                                                        </label>
+                                                    </div>
+                                                    <input type="hidden" class="item-type-select" value="pdca_level">
+                                                </div>
                                             </td>
-
-                                            <?php if ($isDirectScore): ?>
-                                                <!-- Direct Score: Item Name & Description -->
-                                                <td>
-                                                    <input type="text" class="form-control form-control-sm fw-semibold item-name-input mb-1" 
-                                                           value="<?= Html::encode($item->name_th) ?>" placeholder="ระบุรายการประเมิน...">
-                                                    <input type="hidden" class="item-type-select" value="score_direct">
-                                                    <input type="hidden" class="item-ev-input" value="0">
-                                                </td>
-                                                <!-- Direct Score: Max Score Input -->
-                                                <td class="text-center">
-                                                    <div class="input-group input-group-sm justify-content-center" style="max-width: 110px; margin: 0 auto;">
-                                                        <input type="number" step="0.5" min="0" max="100" class="form-control form-control-sm text-center fw-bold item-weight-input" 
-                                                               value="<?= $scoreVal ?>" oninput="recalcTotals()">
-                                                        <span class="input-group-text px-1 text-muted">คะแนน</span>
+                                            <td>
+                                                <div class="pdca-box">
+                                                    <div class="mb-1 d-flex align-items-center gap-1.5">
+                                                        <span class="badge bg-secondary-subtle text-dark border level-badge-lbl">ระดับ ๑ (Plan)</span>
+                                                        <input type="text" class="form-control form-control-sm crit-input-1" 
+                                                               value="<?= Html::encode($critMap[1] ?? $defaultPdcaDescriptions[1]) ?>" 
+                                                               placeholder="ระดับ 1...">
                                                     </div>
-                                                </td>
-                                            <?php else: ?>
-                                                <!-- PDCA: Column (1) Work / KPI Name -->
-                                                <td>
-                                                    <textarea class="form-control form-control-sm item-name-input fw-semibold mb-1" rows="3" 
-                                                              placeholder="ระบุกิจกรรม/โครงการ/ภาระงาน หรือตัวชี้วัด..."><?= Html::encode($item->name_th) ?></textarea>
-                                                    <div class="d-flex align-items-center justify-content-between mt-1">
-                                                        <div class="form-check small mb-0">
-                                                            <input class="form-check-input item-ev-input" type="checkbox" id="ev_<?= $item->id ?>" <?= $item->requires_evidence ? 'checked' : '' ?>>
-                                                            <label class="form-check-label text-muted" for="ev_<?= $item->id ?>">
-                                                                <i class="bi bi-paperclip"></i> บังคับแนบหลักฐาน
-                                                            </label>
-                                                        </div>
-                                                        <input type="hidden" class="item-type-select" value="pdca_level">
+                                                    <div class="mb-1 d-flex align-items-center gap-1.5">
+                                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle level-badge-lbl">ระดับ ๒ (Do)</span>
+                                                        <input type="text" class="form-control form-control-sm crit-input-2" 
+                                                               value="<?= Html::encode($critMap[2] ?? $defaultPdcaDescriptions[2]) ?>" 
+                                                               placeholder="ระดับ 2...">
                                                     </div>
-                                                </td>
-
-                                                <!-- PDCA: Column (2) 5 Levels Box (Matching self_assess.php) -->
-                                                <td>
-                                                    <div class="pdca-box">
-                                                        <div class="mb-1 d-flex align-items-center gap-1.5">
-                                                            <span class="badge bg-secondary-subtle text-dark border level-badge-lbl">
-                                                                ระดับ ๑ (Plan)
-                                                            </span>
-                                                            <input type="text" class="form-control form-control-sm crit-input-1" 
-                                                                   value="<?= Html::encode($critMap[1] ?? '') ?>" 
-                                                                   placeholder="มีแผนการดำเนินงาน / กำหนดขั้นตอนปฏิบัติงานชัดเจน">
-                                                        </div>
-                                                        <div class="mb-1 d-flex align-items-center gap-1.5">
-                                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle level-badge-lbl">
-                                                                ระดับ ๒ (Do)
-                                                            </span>
-                                                            <input type="text" class="form-control form-control-sm crit-input-2" 
-                                                                   value="<?= Html::encode($critMap[2] ?? '') ?>" 
-                                                                   placeholder="ปฏิบัติงานได้ตามขั้นตอนและแผนงานที่กำหนด">
-                                                        </div>
-                                                        <div class="mb-1 d-flex align-items-center gap-1.5">
-                                                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle level-badge-lbl">
-                                                                ระดับ ๓ (Check)
-                                                            </span>
-                                                            <input type="text" class="form-control form-control-sm crit-input-3" 
-                                                                   value="<?= Html::encode($critMap[3] ?? '') ?>" 
-                                                                   placeholder="ตรวจสอบ ทบทวน ผลงานเป็นไปตามเป้าหมายและตรงเวลา">
-                                                        </div>
-                                                        <div class="mb-1 d-flex align-items-center gap-1.5">
-                                                            <span class="badge bg-success-subtle text-success border border-success-subtle level-badge-lbl">
-                                                                ระดับ ๔ (Act)
-                                                            </span>
-                                                            <input type="text" class="form-control form-control-sm crit-input-4" 
-                                                                   value="<?= Html::encode($critMap[4] ?? '') ?>" 
-                                                                   placeholder="ปรับปรุงกระบวนการทำงาน มีคู่มือหรือแนวทางปฏิบัติที่พัฒนาขึ้น">
-                                                        </div>
-                                                        <div class="d-flex align-items-center gap-1.5">
-                                                            <span class="badge border level-badge-lbl" style="background-color: #f3e8ff; color: #6b21a8; border-color: #d8b4fe;">
-                                                                ระดับ ๕ (Impact)
-                                                            </span>
-                                                            <input type="text" class="form-control form-control-sm crit-input-5" 
-                                                                   value="<?= Html::encode($critMap[5] ?? '') ?>" 
-                                                                   placeholder="ปรับปรุงต่อเนื่อง สร้างนวัตกรรม เกิดผลลัพธ์ที่เป็นประโยชน์สูง">
-                                                        </div>
+                                                    <div class="mb-1 d-flex align-items-center gap-1.5">
+                                                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle level-badge-lbl">ระดับ ๓ (Check)</span>
+                                                        <input type="text" class="form-control form-control-sm crit-input-3" 
+                                                               value="<?= Html::encode($critMap[3] ?? $defaultPdcaDescriptions[3]) ?>" 
+                                                               placeholder="ระดับ 3...">
                                                     </div>
-                                                </td>
-
-                                                <!-- PDCA: Column (3) Weight (%) -->
-                                                <td class="text-center">
-                                                    <div class="input-group input-group-sm justify-content-center" style="max-width: 95px; margin: 0 auto;">
-                                                        <input type="number" step="0.5" min="0" max="100" class="form-control form-control-sm text-center fw-bold item-weight-input" 
-                                                               value="<?= $item->max_weight ?>" oninput="recalcTotals()">
-                                                        <span class="input-group-text px-1 text-muted">%</span>
+                                                    <div class="mb-1 d-flex align-items-center gap-1.5">
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle level-badge-lbl">ระดับ ๔ (Act)</span>
+                                                        <input type="text" class="form-control form-control-sm crit-input-4" 
+                                                               value="<?= Html::encode($critMap[4] ?? $defaultPdcaDescriptions[4]) ?>" 
+                                                               placeholder="ระดับ 4...">
                                                     </div>
-                                                </td>
-                                            <?php endif; ?>
-
-                                            <!-- Column: Delete -->
+                                                    <div class="d-flex align-items-center gap-1.5">
+                                                        <span class="badge border level-badge-lbl" style="background-color: #f3e8ff; color: #6b21a8; border-color: #d8b4fe;">ระดับ ๕ (Impact)</span>
+                                                        <input type="text" class="form-control form-control-sm crit-input-5" 
+                                                               value="<?= Html::encode($critMap[5] ?? $defaultPdcaDescriptions[5]) ?>" 
+                                                               placeholder="ระดับ 5...">
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="input-group input-group-sm justify-content-center" style="max-width: 95px; margin: 0 auto;">
+                                                    <input type="number" step="0.5" min="0" max="80" class="form-control form-control-sm text-center fw-bold item-weight-input main-item-weight" 
+                                                           value="<?= $wVal ?>" oninput="recalcTotals()">
+                                                    <span class="input-group-text px-1 text-muted">%</span>
+                                                </div>
+                                            </td>
                                             <td class="text-center">
                                                 <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeKpiRow(this)" title="ลบรายการนี้">
                                                     <i class="bi bi-trash"></i>
@@ -428,38 +485,162 @@ $isCivilOrUniv = ($ptCode === 'CIVIL' || $ptCode === 'UNIVERSITY');
                                     <?php endforeach; ?>
                                 <?php endif; ?>
                             </tbody>
-
                             <tfoot class="table-light">
                                 <tr>
-                                    <td colspan="<?= $isDirectScore ? 4 : 5 ?>" class="p-2.5">
-                                        <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="addKpiRow(this, <?= $section->id ?>, <?= $isDirectScore ? 'true' : 'false' ?>)">
-                                            <i class="bi bi-plus-circle me-1"></i> เพิ่มรายการในหมวดนี้
-                                        </button>
+                                    <td colspan="5" class="p-2.5">
+                                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="addMainWorkRow()">
+                                                <i class="bi bi-plus-circle me-1"></i> เพิ่มรายการภาระงานหลัก (PDCA)
+                                            </button>
+                                            <div class="small fw-semibold text-muted">
+                                                ผลรวมน้ำหนักภาระงานหลัก: 
+                                                <span class="badge bg-primary fs-6" id="main-work-sum-badge">
+                                                    <span id="main-work-sum">80</span>% / 80%
+                                                </span>
+                                            </div>
+                                        </div>
                                     </td>
                                 </tr>
                             </tfoot>
                         </table>
                     </div>
                 </div>
-            </div>
-        <?php endif; ?>
-    <?php endforeach; ?>
 
-    <!-- In case competencies exist but weren't in a competency-typed section -->
-    <?php if (!$competencyRendered && !empty($competencies)): ?>
-        <div class="card card-rmutt shadow-sm mb-4 section-block" data-section-id="0" data-section-type="competency">
-            <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
-                <h6 class="fw-bold mb-0 text-white"><i class="bi bi-award-fill me-2"></i> การประเมินสมรรถนะ (พม.)</h6>
-                <span class="badge bg-white text-primary">สมรรถนะบุคลากร</span>
+                <!-- ------------------------------------------------------------- -->
+                <!-- 1.2 ๕.๑ งานส่งเสริมการขับเคลื่อนนโยบาย (SECONDARY_POLICY) 15%     -->
+                <!-- ------------------------------------------------------------- -->
+                <div class="section-block mb-4 p-3 border rounded bg-white" 
+                     data-section-id="<?= $secPolicy ? $secPolicy->id : 0 ?>" 
+                     data-section-type="secondary_work"
+                     data-section-code="SECONDARY_POLICY">
+                    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary text-white fw-bold">ส่วนที่ ๒</span>
+                            <span class="fw-bold fs-6 text-dark">
+                                ๕.๑ ภาระงานอื่น/หรืองานที่ได้รับมอบหมาย ส่งเสริมการขับเคลื่อนนโยบายของมหาวิทยาลัยและสำนักฯ (ค่าน้ำหนัก ๑๕)
+                            </span>
+                            <input type="hidden" class="section-name-input" value="๕.๑ ภาระงานอื่น/หรืองานที่ได้รับมอบหมาย ส่งเสริมการขับเคลื่อนนโยบายของมหาวิทยาลัยและสำนักฯ (ค่าน้ำหนัก ๑๕)">
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-warning-subtle text-warning-emphasis border">เกณฑ์กลางมหาวิทยาลัย</span>
+                            <span class="text-muted small">ค่าน้ำหนัก:</span>
+                            <div class="input-group input-group-sm" style="width: 105px;">
+                                <input type="number" step="0.5" min="0" max="100" class="form-control form-control-sm text-center fw-bold section-weight-input" 
+                                       value="<?= $secPolicy ? $secPolicy->weight : 15 ?>" oninput="recalcTotals()" id="sec-policy-weight">
+                                <span class="input-group-text px-1">%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-light rounded border mb-3">
+                        <div class="rule-box mb-3 small">
+                            <i class="bi bi-info-circle-fill text-success me-1"></i>
+                            <strong>เกณฑ์การให้คะแนนตามระเบียบมหาวิทยาลัย:</strong> 
+                            ดำเนินการได้ <strong>๑ ข้อ = ๑ คะแนน</strong> | <strong>๒ ข้อ = ๓ คะแนน</strong> | <strong>๓ ข้อขึ้นไป = ๕ คะแนน</strong> 
+                            (คะแนนเต็ม ๕ คะแนน &rarr; แปลงเป็นค่าน้ำหนัก <strong>๑๕%</strong>)
+                        </div>
+
+                        <div class="fw-semibold text-dark mb-2 small">
+                            รายการขับเคลื่อนนโยบายมาตรฐานมหาวิทยาลัย (๗ รายการ):
+                        </div>
+                        <div class="list-group list-group-flush border rounded bg-white">
+                            <?php foreach ($policy7Options as $pIdx => $pText): ?>
+                                <div class="list-group-item d-flex align-items-start gap-2 py-2 small">
+                                    <span class="badge bg-secondary-subtle text-dark border me-1 mt-0.5">ข้อ <?= $pIdx ?></span>
+                                    <span class="text-dark"><?= Html::encode($pText) ?></span>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ------------------------------------------------------------- -->
+                <!-- 1.3 ๕.๒ คู่มือปฏิบัติงาน/ผลงานทางวิชาการ (SECONDARY_ACADEMIC) 5%  -->
+                <!-- ------------------------------------------------------------- -->
+                <div class="section-block p-3 border rounded bg-white" 
+                     data-section-id="<?= $secAcad ? $secAcad->id : 0 ?>" 
+                     data-section-type="secondary_work"
+                     data-section-code="SECONDARY_ACADEMIC">
+                    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary text-white fw-bold">ส่วนที่ ๓</span>
+                            <span class="fw-bold fs-6 text-dark">
+                                ๕.๒ การจัดทำคู่มือปฏิบัติงาน ผลงานวิจัย ตำรา หนังสือ งานแปล หรือบทความทางวิชาการ (ค่าน้ำหนัก ๕)
+                            </span>
+                            <input type="hidden" class="section-name-input" value="๕.๒ การจัดทำคู่มือปฏิบัติงาน ผลงานวิจัย ตำรา หนังสือ งานแปล หรือบทความทางวิชาการ (ค่าน้ำหนัก ๕)">
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-warning-subtle text-warning-emphasis border">เกณฑ์กลางมหาวิทยาลัย</span>
+                            <span class="text-muted small">ค่าน้ำหนัก:</span>
+                            <div class="input-group input-group-sm" style="width: 105px;">
+                                <input type="number" step="0.5" min="0" max="100" class="form-control form-control-sm text-center fw-bold section-weight-input" 
+                                       value="<?= $secAcad ? $secAcad->weight : 5 ?>" oninput="recalcTotals()" id="sec-acad-weight">
+                                <span class="input-group-text px-1">%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-light rounded border">
+                        <div class="rule-box mb-3 small">
+                            <i class="bi bi-info-circle-fill text-success me-1"></i>
+                            <strong>เกณฑ์การให้คะแนนตามระดับความก้าวหน้า:</strong> 
+                            ประเมินตามระดับความก้าวหน้าตั้งแต่ <strong>ระดับ ๐ ถึง ระดับ ๕</strong> (เต็ม ๕ คะแนน &rarr; แปลงเป็นค่าน้ำหนัก <strong>๕%</strong>)
+                        </div>
+
+                        <div class="fw-semibold text-dark mb-2 small">
+                            ระดับความก้าวหน้าการจัดทำคู่มือ/ผลงานทางวิชาการ (๖ ระดับ):
+                        </div>
+                        <div class="list-group list-group-flush border rounded bg-white">
+                            <?php foreach ($acad5Levels as $aLvl => $aText): ?>
+                                <div class="list-group-item d-flex align-items-start gap-2 py-2 small">
+                                    <span class="badge <?= $aLvl > 0 ? 'bg-primary-subtle text-primary border' : 'bg-light text-muted border' ?> me-1 mt-0.5">
+                                        <?= $aLvl ?> คะแนน
+                                    </span>
+                                    <span class="text-dark"><?= Html::encode($aText) ?></span>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+
             </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- CARD 2: ๓. แบบข้อตกลงการประเมินขีดความสามารถ/สมรรถนะ (แบบ พม.)       -->
+        <!-- =================================================================== -->
+        <div class="card card-rmutt shadow-sm mb-4 border-info section-block" 
+             data-section-id="<?= $secComp ? $secComp->id : 0 ?>" 
+             data-section-type="competency"
+             data-section-code="COMPETENCY_EVAL">
+            <div class="card-header bg-info text-dark py-3 d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-award-fill me-2 text-primary"></i>๓. แบบข้อตกลงการประเมินขีดความสามารถ/สมรรถนะของสายสนับสนุน (แบบ พม.)
+                    </h5>
+                    <small class="text-muted">
+                        สมรรถนะหลัก (Core Competencies) &bull; สมรรถนะประจำสายงาน (Functional Competencies) &bull; ถ่วงน้ำหนักภาพรวม <?= intval($compWeight) ?>%
+                    </small>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-dark small fw-bold">ค่าน้ำหนักหมวด:</span>
+                    <div class="input-group input-group-sm" style="width: 105px;">
+                        <input type="number" step="0.5" min="0" max="100" class="form-control form-control-sm text-center fw-bold section-weight-input" 
+                               value="<?= $secComp ? $secComp->weight : $compWeight ?>" oninput="recalcTotals()" id="sec-comp-weight">
+                        <span class="input-group-text px-1">%</span>
+                    </div>
+                    <input type="hidden" class="section-name-input" value="แบบข้อตกลงการประเมินขีดความสามารถ/สมรรถนะของสายสนับสนุน (ค่าน้ำหนัก <?= intval($compWeight) ?>%)">
+                </div>
+            </div>
+
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-bordered table-hover align-middle mb-0 table-eval">
+                    <table class="table table-bordered table-hover align-middle mb-0 table-eval" id="comp-table">
                         <thead class="table-light text-center">
                             <tr>
                                 <th style="width: 50px;">#</th>
-                                <th style="min-width: 250px;">หัวข้อสมรรถนะ</th>
-                                <th style="min-width: 320px;">คำนิยาม / พฤติกรรมที่บ่งชี้</th>
+                                <th style="min-width: 250px;">หัวข้อสมรรถนะ (Competency)</th>
+                                <th style="min-width: 340px;">คำนิยาม / พฤติกรรมที่บ่งชี้</th>
                                 <th style="width: 180px;">ประเภทสมรรถนะ</th>
                                 <th style="width: 140px;">ระดับที่คาดหวัง</th>
                                 <th style="width: 50px;">ลบ</th>
@@ -516,6 +697,235 @@ $isCivilOrUniv = ($ptCode === 'CIVIL' || $ptCode === 'UNIVERSITY');
                 </div>
             </div>
         </div>
+
+    <!-- ========================================================================================= -->
+    <!-- CASE 2: SPECIAL (พนักงานพิเศษเงินรายได้) - ด้านที่ ๑ ผลงาน (55) + ด้านที่ ๒ คุณลักษณะ (45)      -->
+    <!-- ========================================================================================= -->
+    <?php elseif ($isSpecial): ?>
+
+        <!-- SPECIAL SECTION 1: ด้านที่ ๑ ผลงาน (55 คะแนน) -->
+        <div class="card card-rmutt shadow-sm mb-4 section-block" 
+             data-section-id="<?= $secSpec1 ? $secSpec1->id : 0 ?>" 
+             data-section-type="main_work"
+             data-section-code="SPEC_PERFORMANCE">
+            <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="fw-bold mb-0 text-white">
+                        <i class="bi bi-briefcase-fill me-2"></i>ด้านที่ ๑ ผลงาน (คะแนนเต็ม ๕๕ คะแนน)
+                    </h5>
+                    <small class="text-white-50">
+                        ข้อ ๑.๑ - ๑.๕: ๕ ปัจจัยผลสัมฤทธิ์ (๕๐ คะแนน) &bull; ข้อ ๑.๖: ภาระงานอื่น/งานที่ได้รับมอบหมาย (๕ คะแนน)
+                    </small>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-white-50 small">คะแนนเต็มหมวด:</span>
+                    <div class="input-group input-group-sm" style="width: 110px;">
+                        <input type="number" step="0.5" min="0" max="100" class="form-control form-control-sm text-center fw-bold section-weight-input" 
+                               value="<?= $secSpec1 ? $secSpec1->weight : 55 ?>" oninput="recalcTotals()" id="sec-spec1-weight">
+                        <span class="input-group-text px-1">คะแนน</span>
+                    </div>
+                    <input type="hidden" class="section-name-input" value="ด้านที่ ๑ ผลงาน (คะแนนเต็ม ๕๕ คะแนน)">
+                </div>
+            </div>
+
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle mb-0 table-eval kpi-table">
+                        <thead class="table-light text-center">
+                            <tr>
+                                <th style="width: 50px;">ข้อ</th>
+                                <th style="min-width: 320px;">รายการประเมิน / รายละเอียดภาระงาน</th>
+                                <th style="width: 140px;">คะแนนเต็ม</th>
+                                <th style="width: 60px;">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody class="kpi-tbody">
+                            <?php 
+                            $spec1Items = ($secSpec1 && !empty($secSpec1->items)) ? $secSpec1->items : [];
+                            foreach ($spec1Items as $iIdx => $item): 
+                                $scoreVal = !empty($item->max_score) ? $item->max_score : ($item->max_weight ?: 10);
+                            ?>
+                                <tr class="kpi-row" data-item-id="<?= $item->id ?>">
+                                    <td class="text-center fw-bold kpi-row-number"><?= $iIdx + 1 ?></td>
+                                    <td>
+                                        <input type="text" class="form-control form-control-sm fw-semibold item-name-input mb-1" 
+                                               value="<?= Html::encode($item->name_th) ?>" placeholder="ระบุรายการประเมิน...">
+                                        <input type="hidden" class="item-type-select" value="<?= Html::encode($item->input_type ?: 'score_direct') ?>">
+                                        <input type="hidden" class="item-ev-input" value="0">
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="input-group input-group-sm justify-content-center" style="max-width: 110px; margin: 0 auto;">
+                                            <input type="number" step="0.5" min="0" max="50" class="form-control form-control-sm text-center fw-bold item-weight-input" 
+                                                   value="<?= $scoreVal ?>" oninput="recalcTotals()">
+                                            <span class="input-group-text px-1 text-muted">คะแนน</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeKpiRow(this)" title="ลบรายการนี้">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <td colspan="4" class="p-2.5">
+                                    <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="addKpiRow(this, <?= $secSpec1 ? $secSpec1->id : 0 ?>, true)">
+                                        <i class="bi bi-plus-circle me-1"></i> เพิ่มรายการในด้านผลงาน
+                                    </button>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SPECIAL SECTION 2: ด้านที่ ๒ คุณลักษณะการปฏิบัติงาน (45 คะแนน) -->
+        <div class="card card-rmutt shadow-sm mb-4 section-block" 
+             data-section-id="<?= $secSpec2 ? $secSpec2->id : 0 ?>" 
+             data-section-type="general"
+             data-section-code="SPEC_CHARACTERISTICS">
+            <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="fw-bold mb-0 text-white">
+                        <i class="bi bi-person-check-fill me-2"></i>ด้านที่ ๒ คุณลักษณะการปฏิบัติงาน (คะแนนเต็ม ๔๕ คะแนน)
+                    </h5>
+                    <small class="text-white-50">
+                        ข้อ ๒.๑ - ๒.๗: วินัย คุณธรรม จริยธรรม การมาปฏิบัติงาน ความร่วมมือ และความคิดริเริ่ม
+                    </small>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-white-50 small">คะแนนเต็มหมวด:</span>
+                    <div class="input-group input-group-sm" style="width: 110px;">
+                        <input type="number" step="0.5" min="0" max="100" class="form-control form-control-sm text-center fw-bold section-weight-input" 
+                               value="<?= $secSpec2 ? $secSpec2->weight : 45 ?>" oninput="recalcTotals()" id="sec-spec2-weight">
+                        <span class="input-group-text px-1">คะแนน</span>
+                    </div>
+                    <input type="hidden" class="section-name-input" value="ด้านที่ ๒ คุณลักษณะการปฏิบัติงาน (คะแนนเต็ม ๔๕ คะแนน)">
+                </div>
+            </div>
+
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle mb-0 table-eval kpi-table">
+                        <thead class="table-light text-center">
+                            <tr>
+                                <th style="width: 50px;">ข้อ</th>
+                                <th style="min-width: 320px;">รายการประเมิน / รายละเอียดคุณลักษณะ</th>
+                                <th style="width: 140px;">คะแนนเต็ม</th>
+                                <th style="width: 60px;">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody class="kpi-tbody">
+                            <?php 
+                            $spec2Items = ($secSpec2 && !empty($secSpec2->items)) ? $secSpec2->items : [];
+                            foreach ($spec2Items as $iIdx => $item): 
+                                $scoreVal = !empty($item->max_score) ? $item->max_score : ($item->max_weight ?: 5);
+                            ?>
+                                <tr class="kpi-row" data-item-id="<?= $item->id ?>">
+                                    <td class="text-center fw-bold kpi-row-number"><?= $iIdx + 1 ?></td>
+                                    <td>
+                                        <input type="text" class="form-control form-control-sm fw-semibold item-name-input mb-1" 
+                                               value="<?= Html::encode($item->name_th) ?>" placeholder="ระบุรายการคุณลักษณะ...">
+                                        <input type="hidden" class="item-type-select" value="score_direct">
+                                        <input type="hidden" class="item-ev-input" value="0">
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="input-group input-group-sm justify-content-center" style="max-width: 110px; margin: 0 auto;">
+                                            <input type="number" step="0.5" min="0" max="50" class="form-control form-control-sm text-center fw-bold item-weight-input" 
+                                                   value="<?= $scoreVal ?>" oninput="recalcTotals()">
+                                            <span class="input-group-text px-1 text-muted">คะแนน</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeKpiRow(this)" title="ลบรายการนี้">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <td colspan="4" class="p-2.5">
+                                    <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="addKpiRow(this, <?= $secSpec2 ? $secSpec2->id : 0 ?>, true)">
+                                        <i class="bi bi-plus-circle me-1"></i> เพิ่มรายการในด้านคุณลักษณะ
+                                    </button>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    <!-- ========================================================================================= -->
+    <!-- CASE 3: GENERAL / OTHER TYPES (e.g. GOVT)                                                 -->
+    <!-- ========================================================================================= -->
+    <?php else: ?>
+
+        <?php foreach ($sections as $sIdx => $section): ?>
+            <div class="card card-rmutt shadow-sm mb-4 section-block" data-section-id="<?= $section->id ?>" data-section-type="<?= Html::encode($section->section_type) ?>">
+                <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2 flex-grow-1 me-3">
+                        <span class="badge bg-white text-primary fw-bold">หมวดที่ <?= $sIdx + 1 ?></span>
+                        <input type="text" class="form-control form-control-sm fw-bold section-name-input text-white border-0" 
+                               style="background-color: rgba(255,255,255,0.2) !important; max-width: 500px;" 
+                               value="<?= Html::encode($section->name_th) ?>" placeholder="ชื่อหมวดการประเมิน...">
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                        <span class="text-white-50 small">ค่าน้ำหนักหมวด:</span>
+                        <div class="input-group input-group-sm" style="width: 110px;">
+                            <input type="number" step="0.5" min="0" max="100" class="form-control form-control-sm text-center fw-bold section-weight-input" 
+                                   value="<?= $section->weight ?>" oninput="recalcTotals()">
+                            <span class="input-group-text px-1">%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered align-middle mb-0 table-eval kpi-table">
+                            <thead class="table-light text-center">
+                                <tr>
+                                    <th style="width: 45px;">#</th>
+                                    <th style="min-width: 260px;">กิจกรรม / ภาระงาน หรือตัวชี้วัด</th>
+                                    <th style="min-width: 450px;">เกณฑ์ระดับค่าเป้าหมายความสำเร็จ</th>
+                                    <th style="width: 110px;">น้ำหนัก (%)</th>
+                                    <th style="width: 50px;">ลบ</th>
+                                </tr>
+                            </thead>
+                            <tbody class="kpi-tbody">
+                                <?php foreach ($section->items as $iIdx => $item): ?>
+                                    <tr class="kpi-row" data-item-id="<?= $item->id ?>">
+                                        <td class="text-center fw-bold kpi-row-number"><?= $iIdx + 1 ?></td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm fw-semibold item-name-input mb-1" 
+                                                   value="<?= Html::encode($item->name_th) ?>" placeholder="ระบุภาระงาน...">
+                                            <input type="hidden" class="item-type-select" value="pdca_level">
+                                            <input type="hidden" class="item-ev-input" value="0">
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm" placeholder="เกณฑ์ความสำเร็จ...">
+                                        </td>
+                                        <td class="text-center">
+                                            <input type="number" step="0.5" min="0" max="100" class="form-control form-control-sm text-center fw-bold item-weight-input" 
+                                                   value="<?= $item->max_weight ?>" oninput="recalcTotals()">
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeKpiRow(this)"><i class="bi bi-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+
     <?php endif; ?>
 
     <!-- 4. Bottom Action Bar (Same as self_assess.php footer) -->
@@ -526,8 +936,13 @@ $isCivilOrUniv = ($ptCode === 'CIVIL' || $ptCode === 'UNIVERSITY');
                     <i class="bi bi-check2-circle text-primary me-1"></i> ตรวจสอบแบบประเมินและบันทึกข้อมูล
                 </div>
                 <div class="text-muted small">
-                    ค่าน้ำหนักรวมทุกหมวด: <span id="summary-total-weight-text" class="fw-bold text-primary"><?= number_format($totalSectionWeight, 0) ?>%</span> 
-                    (ระบบจะใช้เกณฑ์นี้ในการคำนวณคะแนนของบุคลากรในสังกัด)
+                    <?php if ($isCivilOrUniv): ?>
+                        แบบ ป.ผ. (ผลสัมฤทธิ์ของงาน 100%) แปลงเป็นค่าน้ำหนักภาพรวม <?= intval($perfWeight) ?>% &bull; แบบ พม. (สมรรถนะ) ค่าน้ำหนัก <?= intval($compWeight) ?>% &bull; รวมครบ 100%
+                    <?php elseif ($isSpecial): ?>
+                        ด้านที่ ๑ ผลงาน (55 คะแนน) &bull; ด้านที่ ๒ คุณลักษณะ (45 คะแนน) &bull; รวมคะแนนเต็ม 100 คะแนน
+                    <?php else: ?>
+                        สัดส่วนรวมครบ 100% ตามโครงสร้างแบบประเมิน
+                    <?php endif; ?>
                 </div>
             </div>
             <div class="d-flex align-items-center gap-2">
@@ -572,127 +987,161 @@ const CSRF_PARAM = '<?= $csrfParam ?>';
 const CSRF_TOKEN = '<?= $csrfToken ?>';
 const SAVE_ALL_URL = '<?= Url::to(['save-all', 'id' => $template->id]) ?>';
 const COMP_POOL_URL = '<?= Url::to(['competency-pool']) ?>';
+const IS_CIVIL_OR_UNIV = <?= $isCivilOrUniv ? 'true' : 'false' ?>;
+const IS_SPECIAL = <?= $isSpecial ? 'true' : 'false' ?>;
+const IS_GOVT = <?= $isGovt ? 'true' : 'false' ?>;
 
-// Real-time weight and item counter
+// Default PDCA Descriptions for new rows
+const DEFAULT_PDCA = {
+    1: 'มีแผนการดำเนินงาน/แนวทางการดำเนินงาน (Plan)',
+    2: 'ดำเนินการตามแผน/แนวทางที่กำหนด (Do)',
+    3: 'ทบทวน ตรวจสอบ ประเมินผลการดำเนินงาน (Check)',
+    4: 'แก้ไขปรับปรุงกระบวนการ มีคู่มือหรือแนวทางปฏิบัติที่พัฒนาขึ้น (Act)',
+    5: 'ปรับปรุงต่อเนื่อง สร้างคุณค่าเพิ่มหรือนวัตกรรม เกิดผลลัพธ์ที่เป็นประโยชน์สูง (Impact)'
+};
+
+// Real-time weight recalculation
 function recalcTotals() {
-    let totalSecWeight = 0;
-    document.querySelectorAll('.section-weight-input').forEach(function(inp) {
-        totalSecWeight += parseFloat(inp.value) || 0;
-    });
+    if (IS_CIVIL_OR_UNIV) {
+        // Calculate Main Work weight sum
+        let mainSum = 0;
+        document.querySelectorAll('.main-item-weight').forEach(function(inp) {
+            mainSum += parseFloat(inp.value) || 0;
+        });
 
-    const badge = document.getElementById('total-weight-badge');
-    const badgeNum = document.getElementById('total-weight-num');
-    const statusIcon = document.getElementById('weight-status-icon');
-    const sumText = document.getElementById('summary-total-weight-text');
+        const mainSumEl = document.getElementById('main-work-sum');
+        const mainBadge = document.getElementById('main-work-sum-badge');
+        if (mainSumEl) mainSumEl.innerText = mainSum.toFixed(0);
+        if (mainBadge) {
+            mainBadge.className = (mainSum === 80) ? 'badge bg-success fs-6' : 'badge bg-warning text-dark fs-6';
+        }
 
-    if (badgeNum) badgeNum.innerText = totalSecWeight.toFixed(0);
-    if (sumText) sumText.innerText = totalSecWeight.toFixed(0) + '%';
+        // Form 2 = Main (80) + Policy (15) + Academic (5) = 100
+        const policyW = parseFloat(document.getElementById('sec-policy-weight')?.value) || 15;
+        const acadW = parseFloat(document.getElementById('sec-acad-weight')?.value) || 5;
+        const form2Total = mainSum + policyW + acadW;
 
-    if (totalSecWeight === 100) {
-        if (badge) {
-            badge.className = 'badge bg-success fs-6';
+        const form2Badge = document.getElementById('form2-weight-badge');
+        const form2Num = document.getElementById('form2-weight-num');
+        if (form2Num) form2Num.innerText = form2Total.toFixed(0);
+        if (form2Badge) {
+            form2Badge.className = (form2Total === 100) ? 'badge bg-success fs-6' : 'badge bg-danger fs-6';
         }
-        if (statusIcon) {
-            statusIcon.innerHTML = '<i class="bi bi-check-circle-fill text-success" title="น้ำหนักรวมครบ 100% ถูกต้อง"></i>';
-        }
-    } else {
-        if (badge) {
-            badge.className = 'badge bg-danger fs-6';
-        }
-        if (statusIcon) {
-            statusIcon.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-danger" title="น้ำหนักรวมควรได้ 100%"></i>';
+    } else if (IS_SPECIAL) {
+        let sec1Sum = 0;
+        document.querySelectorAll('[data-section-code="SPEC_PERFORMANCE"] .item-weight-input').forEach(function(inp) {
+            sec1Sum += parseFloat(inp.value) || 0;
+        });
+        let sec2Sum = 0;
+        document.querySelectorAll('[data-section-code="SPEC_CHARACTERISTICS"] .item-weight-input').forEach(function(inp) {
+            sec2Sum += parseFloat(inp.value) || 0;
+        });
+        const total = sec1Sum + sec2Sum;
+        const totalBadge = document.getElementById('total-weight-badge');
+        const totalNum = document.getElementById('total-weight-num');
+        if (totalNum) totalNum.innerText = total.toFixed(0);
+        if (totalBadge) {
+            totalBadge.className = (total === 100) ? 'badge bg-success fs-6' : 'badge bg-danger fs-6';
         }
     }
 }
 
-// Add KPI item row
-function addKpiRow(btn, secId, isDirectScore) {
-    const table = btn.closest('.kpi-table');
-    const tbody = table.querySelector('.kpi-tbody');
-    const emptyRow = tbody.querySelector('.empty-kpi-row');
-    if (emptyRow) emptyRow.remove();
-
+// Add KPI row for Main Work (PDCA)
+function addMainWorkRow() {
+    const tbody = document.getElementById('main-work-tbody');
     const count = tbody.querySelectorAll('.kpi-row').length + 1;
     const tr = document.createElement('tr');
     tr.className = 'kpi-row';
     tr.setAttribute('data-item-id', '');
 
-    if (isDirectScore) {
-        tr.innerHTML = `
-            <td class="text-center fw-bold kpi-row-number">${count}</td>
-            <td>
-                <input type="text" class="form-control form-control-sm fw-semibold item-name-input mb-1" 
-                       placeholder="ระบุรายการประเมิน...">
-                <input type="hidden" class="item-type-select" value="score_direct">
-                <input type="hidden" class="item-ev-input" value="0">
-            </td>
-            <td class="text-center">
-                <div class="input-group input-group-sm justify-content-center" style="max-width: 110px; margin: 0 auto;">
-                    <input type="number" step="0.5" min="0" max="100" class="form-control form-control-sm text-center fw-bold item-weight-input" 
-                           value="10" oninput="recalcTotals()">
-                    <span class="input-group-text px-1 text-muted">คะแนน</span>
+    tr.innerHTML = `
+        <td class="text-center fw-bold kpi-row-number">${count}</td>
+        <td>
+            <textarea class="form-control form-control-sm item-name-input fw-semibold mb-1" rows="3" 
+                      placeholder="ระบุกิจกรรม/โครงการ/ภาระงานหลัก หรือตัวชี้วัด..."></textarea>
+            <div class="d-flex align-items-center justify-content-between mt-1">
+                <div class="form-check small mb-0">
+                    <input class="form-check-input item-ev-input" type="checkbox" id="ev_new_${Date.now()}">
+                    <label class="form-check-label text-muted" for="ev_new_${Date.now()}">
+                        <i class="bi bi-paperclip"></i> บังคับแนบหลักฐาน
+                    </label>
                 </div>
-            </td>
-            <td class="text-center">
-                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeKpiRow(this)" title="ลบรายการนี้">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </td>
-        `;
-    } else {
-        tr.innerHTML = `
-            <td class="text-center fw-bold kpi-row-number">${count}</td>
-            <td>
-                <textarea class="form-control form-control-sm item-name-input fw-semibold mb-1" rows="3" 
-                          placeholder="ระบุกิจกรรม/โครงการ/ภาระงาน หรือตัวชี้วัด..."></textarea>
-                <div class="d-flex align-items-center justify-content-between mt-1">
-                    <div class="form-check small mb-0">
-                        <input class="form-check-input item-ev-input" type="checkbox" id="ev_new_${Date.now()}">
-                        <label class="form-check-label text-muted" for="ev_new_${Date.now()}">
-                            <i class="bi bi-paperclip"></i> บังคับแนบหลักฐาน
-                        </label>
-                    </div>
-                    <input type="hidden" class="item-type-select" value="pdca_level">
+                <input type="hidden" class="item-type-select" value="pdca_level">
+            </div>
+        </td>
+        <td>
+            <div class="pdca-box">
+                <div class="mb-1 d-flex align-items-center gap-1.5">
+                    <span class="badge bg-secondary-subtle text-dark border level-badge-lbl">ระดับ ๑ (Plan)</span>
+                    <input type="text" class="form-control form-control-sm crit-input-1" value="${DEFAULT_PDCA[1]}">
                 </div>
-            </td>
-            <td>
-                <div class="pdca-box">
-                    <div class="mb-1 d-flex align-items-center gap-1.5">
-                        <span class="badge bg-secondary-subtle text-dark border level-badge-lbl">ระดับ ๑ (Plan)</span>
-                        <input type="text" class="form-control form-control-sm crit-input-1" placeholder="มีแผนการดำเนินงาน / กำหนดขั้นตอนปฏิบัติงานชัดเจน">
-                    </div>
-                    <div class="mb-1 d-flex align-items-center gap-1.5">
-                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle level-badge-lbl">ระดับ ๒ (Do)</span>
-                        <input type="text" class="form-control form-control-sm crit-input-2" placeholder="ปฏิบัติงานได้ตามขั้นตอนและแผนงานที่กำหนด">
-                    </div>
-                    <div class="mb-1 d-flex align-items-center gap-1.5">
-                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle level-badge-lbl">ระดับ ๓ (Check)</span>
-                        <input type="text" class="form-control form-control-sm crit-input-3" placeholder="ตรวจสอบ ทบทวน ผลงานเป็นไปตามเป้าหมายและตรงเวลา">
-                    </div>
-                    <div class="mb-1 d-flex align-items-center gap-1.5">
-                        <span class="badge bg-success-subtle text-success border border-success-subtle level-badge-lbl">ระดับ ๔ (Act)</span>
-                        <input type="text" class="form-control form-control-sm crit-input-4" placeholder="ปรับปรุงกระบวนการทำงาน มีคู่มือหรือแนวทางปฏิบัติที่พัฒนาขึ้น">
-                    </div>
-                    <div class="d-flex align-items-center gap-1.5">
-                        <span class="badge border level-badge-lbl" style="background-color: #f3e8ff; color: #6b21a8; border-color: #d8b4fe;">ระดับ ๕ (Impact)</span>
-                        <input type="text" class="form-control form-control-sm crit-input-5" placeholder="ปรับปรุงต่อเนื่อง สร้างนวัตกรรม เกิดผลลัพธ์ที่เป็นประโยชน์สูง">
-                    </div>
+                <div class="mb-1 d-flex align-items-center gap-1.5">
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle level-badge-lbl">ระดับ ๒ (Do)</span>
+                    <input type="text" class="form-control form-control-sm crit-input-2" value="${DEFAULT_PDCA[2]}">
                 </div>
-            </td>
-            <td class="text-center">
-                <div class="input-group input-group-sm justify-content-center" style="max-width: 95px; margin: 0 auto;">
-                    <input type="number" step="0.5" min="0" max="100" class="form-control form-control-sm text-center fw-bold item-weight-input" 
-                           value="20" oninput="recalcTotals()">
-                    <span class="input-group-text px-1 text-muted">%</span>
+                <div class="mb-1 d-flex align-items-center gap-1.5">
+                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle level-badge-lbl">ระดับ ๓ (Check)</span>
+                    <input type="text" class="form-control form-control-sm crit-input-3" value="${DEFAULT_PDCA[3]}">
                 </div>
-            </td>
-            <td class="text-center">
-                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeKpiRow(this)" title="ลบรายการนี้">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </td>
-        `;
-    }
+                <div class="mb-1 d-flex align-items-center gap-1.5">
+                    <span class="badge bg-success-subtle text-success border border-success-subtle level-badge-lbl">ระดับ ๔ (Act)</span>
+                    <input type="text" class="form-control form-control-sm crit-input-4" value="${DEFAULT_PDCA[4]}">
+                </div>
+                <div class="d-flex align-items-center gap-1.5">
+                    <span class="badge border level-badge-lbl" style="background-color: #f3e8ff; color: #6b21a8; border-color: #d8b4fe;">ระดับ ๕ (Impact)</span>
+                    <input type="text" class="form-control form-control-sm crit-input-5" value="${DEFAULT_PDCA[5]}">
+                </div>
+            </div>
+        </td>
+        <td class="text-center">
+            <div class="input-group input-group-sm justify-content-center" style="max-width: 95px; margin: 0 auto;">
+                <input type="number" step="0.5" min="0" max="80" class="form-control form-control-sm text-center fw-bold item-weight-input main-item-weight" 
+                       value="20" oninput="recalcTotals()">
+                <span class="input-group-text px-1 text-muted">%</span>
+            </div>
+        </td>
+        <td class="text-center">
+            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeKpiRow(this)" title="ลบรายการนี้">
+                <i class="bi bi-trash"></i>
+            </button>
+        </td>
+    `;
+
+    tbody.appendChild(tr);
+    reindexKpiRows(tbody);
+    recalcTotals();
+}
+
+// Add KPI Row for SPECIAL / General Direct score
+function addKpiRow(btn, secId, isDirectScore) {
+    const table = btn.closest('.kpi-table');
+    const tbody = table.querySelector('.kpi-tbody');
+    const count = tbody.querySelectorAll('.kpi-row').length + 1;
+    const tr = document.createElement('tr');
+    tr.className = 'kpi-row';
+    tr.setAttribute('data-item-id', '');
+
+    tr.innerHTML = `
+        <td class="text-center fw-bold kpi-row-number">${count}</td>
+        <td>
+            <input type="text" class="form-control form-control-sm fw-semibold item-name-input mb-1" 
+                   placeholder="ระบุรายการประเมิน...">
+            <input type="hidden" class="item-type-select" value="score_direct">
+            <input type="hidden" class="item-ev-input" value="0">
+        </td>
+        <td class="text-center">
+            <div class="input-group input-group-sm justify-content-center" style="max-width: 110px; margin: 0 auto;">
+                <input type="number" step="0.5" min="0" max="50" class="form-control form-control-sm text-center fw-bold item-weight-input" 
+                       value="10" oninput="recalcTotals()">
+                <span class="input-group-text px-1 text-muted">คะแนน</span>
+            </div>
+        </td>
+        <td class="text-center">
+            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeKpiRow(this)" title="ลบรายการนี้">
+                <i class="bi bi-trash"></i>
+            </button>
+        </td>
+    `;
 
     tbody.appendChild(tr);
     reindexKpiRows(tbody);
@@ -715,7 +1164,7 @@ function reindexKpiRows(tbody) {
     });
 }
 
-// Competency functions
+// Competency Functions
 function addBlankCompRow() {
     const tbody = document.getElementById('comp-tbody');
     const count = tbody.querySelectorAll('.comp-row').length + 1;
@@ -852,6 +1301,7 @@ function saveEntireGrid() {
     document.querySelectorAll('.section-block').forEach(function(secEl) {
         const secId = secEl.getAttribute('data-section-id');
         const secType = secEl.getAttribute('data-section-type');
+        const secCode = secEl.getAttribute('data-section-code') || '';
         const secNameInput = secEl.querySelector('.section-name-input');
         const secName = secNameInput ? secNameInput.value : '';
         const secWeightInput = secEl.querySelector('.section-weight-input');
@@ -862,6 +1312,7 @@ function saveEntireGrid() {
             name_th: secName,
             weight: secWeight,
             section_type: secType,
+            section_code: secCode,
             items: []
         };
 
@@ -883,11 +1334,11 @@ function saveEntireGrid() {
                 const inp5 = row.querySelector('.crit-input-5');
 
                 const crit = {
-                    1: inp1 ? inp1.value : '',
-                    2: inp2 ? inp2.value : '',
-                    3: inp3 ? inp3.value : '',
-                    4: inp4 ? inp4.value : '',
-                    5: inp5 ? inp5.value : ''
+                    1: inp1 ? inp1.value : DEFAULT_PDCA[1],
+                    2: inp2 ? inp2.value : DEFAULT_PDCA[2],
+                    3: inp3 ? inp3.value : DEFAULT_PDCA[3],
+                    4: inp4 ? inp4.value : DEFAULT_PDCA[4],
+                    5: inp5 ? inp5.value : DEFAULT_PDCA[5]
                 };
 
                 secObj.items.push({
@@ -949,4 +1400,9 @@ function saveEntireGrid() {
         alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
     });
 }
+
+// Initial recalculation on page load
+document.addEventListener('DOMContentLoaded', function() {
+    recalcTotals();
+});
 </script>

@@ -205,14 +205,25 @@ class TemplateBuilderController extends Controller
             $version = $activeTemplate ? ($activeTemplate->activeVersion ?: ($activeTemplate->versions ? $activeTemplate->versions[0] : null)) : null;
 
             $itemCount = 0;
-            $weightStr = [];
             if ($version) {
                 foreach ($version->sections as $s) {
                     $itemCount += count($s->items);
-                    $weightStr[] = number_format($s->weight, 0) . '%';
                 }
             }
             $compCount = $version ? count($version->competencyDefinitions) : 0;
+            $formula = $version && !empty($version->score_formula_config)
+                ? (is_string($version->score_formula_config) ? json_decode($version->score_formula_config, true) : $version->score_formula_config)
+                : [];
+            $perfWeight = intval($formula['performance_weight'] ?? ($pt->code === 'SPECIAL' ? 55 : ($pt->code === 'GOVT' ? 80 : 70)));
+            $compWeight = intval($formula['competency_weight'] ?? ($pt->code === 'SPECIAL' ? 45 : ($pt->code === 'GOVT' ? 20 : 30)));
+
+            if ($pt->code === 'SPECIAL') {
+                $weightStr = 'ด้านที่ ๑ ผลงาน ๕๕ คะแนน / ด้านที่ ๒ คุณลักษณะ ๔๕ คะแนน (รวม ๑๐๐)';
+            } elseif ($pt->code === 'GOVT') {
+                $weightStr = "ผลสัมฤทธิ์ {$perfWeight}% / พฤติกรรม {$compWeight}% (รวม ๑๐๐%)";
+            } else {
+                $weightStr = "ผลสัมฤทธิ์ {$perfWeight}% (แบบ ป.ผ. ๑๐๐%) / สมรรถนะ {$compWeight}% (แบบ พม.)";
+            }
 
             $templateMatrix[$pt->id] = [
                 'personnelType' => $pt,
@@ -885,10 +896,14 @@ class TemplateBuilderController extends Controller
             ->orderBy(['sort_order' => SORT_ASC, 'id' => SORT_ASC])
             ->all();
 
-        $totalSectionWeight = 0;
-        foreach ($sections as $s) {
-            $totalSectionWeight += floatval($s->weight);
-        }
+        $ptCode = $template->personnelType ? $template->personnelType->code : '';
+        $formula = $version && !empty($version->score_formula_config)
+            ? (is_string($version->score_formula_config) ? json_decode($version->score_formula_config, true) : $version->score_formula_config)
+            : [];
+        $perfWeight = floatval($formula['performance_weight'] ?? ($ptCode === 'SPECIAL' ? 55 : ($ptCode === 'GOVT' ? 80 : 70)));
+        $compWeight = floatval($formula['competency_weight'] ?? ($ptCode === 'SPECIAL' ? 45 : ($ptCode === 'GOVT' ? 20 : 30)));
+
+        $totalSectionWeight = 100.0;
 
         $departments = Department::find()->where(['status' => 10])->all();
 
@@ -898,6 +913,8 @@ class TemplateBuilderController extends Controller
             'sections' => $sections,
             'competencies' => $competencies,
             'totalSectionWeight' => $totalSectionWeight,
+            'perfWeight' => $perfWeight,
+            'compWeight' => $compWeight,
             'departments' => $departments,
         ]);
     }
@@ -1281,8 +1298,10 @@ class TemplateBuilderController extends Controller
                         }
                     }
 
-                    // Delete removed items
-                    EvaluationItem::deleteAll(['and', ['evaluation_section_id' => $sec->id], ['not in', 'id', $existingItemIds]]);
+                    // Delete removed items only if items were explicitly posted or for direct work sections
+                    if (!empty($itemsData) || in_array($sec->section_code, ['MAIN_WORK', 'GOVT_MAIN_WORK', 'SPEC_PERFORMANCE', 'SPEC_CHARACTERISTICS'])) {
+                        EvaluationItem::deleteAll(['and', ['evaluation_section_id' => $sec->id], ['not in', 'id', $existingItemIds]]);
+                    }
                 }
             }
 
