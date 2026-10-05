@@ -226,6 +226,15 @@ class AuditAllViewsController extends Controller
             ]);
             $this->stdout("   ✔ [Backend] site/index.php (HR Executive Results Dashboard): OK\n", Console::FG_GREEN);
             $passed++;
+
+            // Test Department Cycle Overview Query (ensuring no column mismatch)
+            $rootDepts = Department::find()->where(['parent_id' => null])->all();
+            foreach ($rootDepts as $rd) {
+                $scopedIds = Department::getAllScopedDeptIds($rd->id);
+                $cnt = (int)Personnel::find()->where(['in', 'department_id', $scopedIds])->andWhere(['status' => Personnel::STATUS_ACTIVE])->count();
+            }
+            $this->stdout("   ✔ [Backend] Department Personnel Active Count Queries: OK\n", Console::FG_GREEN);
+            $passed++;
         } catch (\Throwable $e) {
             $this->stdout("   ✖ [Backend] site/index.php ERROR: " . $e->getMessage() . "\n", Console::FG_RED, Console::BOLD);
             $errors++;

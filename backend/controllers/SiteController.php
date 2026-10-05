@@ -420,7 +420,7 @@ class SiteController extends Controller
             $items = [];
             foreach ($rootDepts as $rd) {
                 $scopedIds = Department::getAllScopedDeptIds($rd->id);
-                $staffCount = (int)Personnel::find()->where(['in', 'department_id', $scopedIds])->andWhere(['is_active' => true])->count();
+                $staffCount = (int)Personnel::find()->where(['in', 'department_id', $scopedIds])->andWhere(['status' => Personnel::STATUS_ACTIVE])->count();
                 $evalDone = (int)Evaluation::find()
                     ->where(['evaluation_cycle_id' => $selectedCycle->id])
                     ->andWhere(['in', 'department_id', $scopedIds])
