@@ -1007,6 +1007,13 @@ class TemplateBuilderController extends Controller
         $item->max_score = floatval($req->post('max_score', 5.0));
         $item->requires_evidence = intval($req->post('requires_evidence', 0));
         $item->sort_order = intval($req->post('sort_order', 1));
+        if ($req->post('item_code')) {
+            $item->item_code = $req->post('item_code');
+        }
+        if ($req->post('options_data') !== null) {
+            $optVal = $req->post('options_data');
+            $item->options_data = is_array($optVal) ? json_encode($optVal, JSON_UNESCAPED_UNICODE) : $optVal;
+        }
 
         if ($item->save()) {
             // Save 5 Criteria if pdca_level
@@ -1271,6 +1278,12 @@ class TemplateBuilderController extends Controller
                         $item->input_type = $iData['input_type'] ?? 'pdca_level';
                         $item->requires_evidence = !empty($iData['requires_evidence']) ? 1 : 0;
                         $item->sort_order = $iIdx + 1;
+                        if (!empty($iData['item_code'])) {
+                            $item->item_code = $iData['item_code'];
+                        }
+                        if (isset($iData['options_data'])) {
+                            $item->options_data = is_array($iData['options_data']) ? json_encode($iData['options_data'], JSON_UNESCAPED_UNICODE) : $iData['options_data'];
+                        }
                         $item->save(false);
                         $existingItemIds[] = $item->id;
 

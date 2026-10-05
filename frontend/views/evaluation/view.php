@@ -1426,7 +1426,7 @@ $isEvaluated = $isL1Evaluated || $isL2Evaluated || ($evaluation->status === Eval
                     $spec16Selected = $supSpec16Raw;
                 }
 
-                $spec10Options = [
+                $defaultSpec10Options = [
                     '1' => 'เข้าร่วมกิจกรรม/โครงการ/งานของสำนักฯ และมหาวิทยาลัย (พร้อมแนบหลักฐาน)',
                     '2' => 'ดำเนินการขับเคลื่อนผลสัมฤทธิ์ที่สำคัญ (Key Results - KR) ตามประเด็นยุทธศาสตร์ (พร้อมแนบหลักฐาน)',
                     '3' => 'คณะทำงานหรือมีส่วนร่วมในการดำเนินงาน เช่น งานความเสี่ยง / KM / EdPEx (พร้อมแนบหลักฐาน)',
@@ -1438,6 +1438,24 @@ $isEvaluated = $isL1Evaluated || $isL2Evaluated || ($evaluation->status === Eval
                     '9' => 'การหารายได้เข้าสำนักฯ (พร้อมแนบหลักฐาน)',
                     '10' => 'อื่น ๆ ที่ได้รับมอบหมาย (พร้อมแนบหลักฐาน)',
                 ];
+                $spec10Options = [];
+                if ($spec16Item && !empty($spec16Item->options_data)) {
+                    $parsed = is_string($spec16Item->options_data) ? json_decode($spec16Item->options_data, true) : $spec16Item->options_data;
+                    if (is_string($parsed)) $parsed = json_decode($parsed, true);
+                    if (is_array($parsed)) {
+                        foreach ($parsed as $pIdx => $opt) {
+                            if (is_array($opt) && isset($opt['text'])) {
+                                $k = (string)($opt['key'] ?? ($pIdx + 1));
+                                $spec10Options[$k] = $opt['text'];
+                            } elseif (is_string($opt)) {
+                                $spec10Options[(string)($pIdx + 1)] = $opt;
+                            }
+                        }
+                    }
+                }
+                if (empty($spec10Options)) {
+                    $spec10Options = $defaultSpec10Options;
+                }
             ?>
                 <!-- ตารางผลสัมฤทธิ์ของงานพนักงานพิเศษเงินรายได้ (ด้านที่ ๑: ๕๕ คะแนน) -->
                 <div class="mb-4">
@@ -1496,7 +1514,7 @@ $isEvaluated = $isL1Evaluated || $isL2Evaluated || ($evaluation->status === Eval
                                 <td class="text-start align-top">
                                     <strong>องค์ประกอบอื่น ๆ (ภาระงานอื่น หรืองานที่ได้รับมอบหมาย - ๕ คะแนน)</strong>
                                     <div class="small text-muted mt-1">
-                                        ดำเนินการ <?= $spec16Count ?>/๑๐ ข้อ (เกณฑ์: ๖-๑๐ ข้อ=๕, ๕ ข้อ=๔, ๓-๔ ข้อ=๓, ๒ ข้อ=๒, ๑ ข้อ=๑ คะแนน)
+                                        ดำเนินการ <?= $spec16Count ?>/<?= count($spec10Options) ?> ข้อ (เกณฑ์: ๖-๑๐ ข้อ=๕, ๕ ข้อ=๔, ๓-๔ ข้อ=๓, ๒ ข้อ=๒, ๑ ข้อ=๑ คะแนน)
                                     </div>
                                     <ul class="small ps-3 mb-0 mt-1 text-muted">
                                         <?php foreach ($spec10Options as $optKey => $optLabel): 

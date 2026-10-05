@@ -385,9 +385,10 @@ class AuditAllViewsController extends Controller
             $passed++;
 
             $templates = \common\models\EvaluationTemplate::find()->all();
-            if (!empty($templates)) {
-                $tpl = $templates[0];
-                $ver = $tpl->activeVersion ?: $tpl->versions[0];
+            foreach ($templates as $tpl) {
+                $ver = $tpl->activeVersion ?: ($tpl->versions[0] ?? null);
+                if (!$ver) continue;
+                $pTypeCode = $tpl->personnelType ? $tpl->personnelType->code : 'GENERAL';
                 $out = $builderCtrl->renderPartial('@backend/views/template-builder/builder', [
                     'template' => $tpl,
                     'version' => $ver,
@@ -396,7 +397,7 @@ class AuditAllViewsController extends Controller
                     'totalSectionWeight' => 100.0,
                     'departments' => $departments,
                 ]);
-                $this->stdout("   ✔ [Backend] template-builder/builder.php: OK\n", Console::FG_GREEN);
+                $this->stdout("   ✔ [Backend] template-builder/builder.php ({$tpl->name_th} - {$pTypeCode}): OK (" . strlen($out) . " bytes)\n", Console::FG_GREEN);
                 $passed++;
 
                 $out = $builderCtrl->renderPartial('@backend/views/template-builder/preview', [
@@ -405,7 +406,7 @@ class AuditAllViewsController extends Controller
                     'sections' => $ver->sections,
                     'competencies' => $ver->competencyDefinitions,
                 ]);
-                $this->stdout("   ✔ [Backend] template-builder/preview.php: OK\n", Console::FG_GREEN);
+                $this->stdout("   ✔ [Backend] template-builder/preview.php ({$tpl->name_th} - {$pTypeCode}): OK (" . strlen($out) . " bytes)\n", Console::FG_GREEN);
                 $passed++;
             }
         } catch (\Throwable $e) {
@@ -606,6 +607,99 @@ class AuditAllViewsController extends Controller
         $this->stdout("=======================================================\n\n", $allPassed ? Console::FG_GREEN : Console::FG_RED);
 
         return $allPassed ? 0 : 1;
+    }
+
+    public function actionTestSpec16()
+    {
+        $this->stdout("\n=== TESTING SPECIAL EMPLOYEE ITEM 1.6 OPTIONS EDIT & PERSISTENCE ===\n\n", Console::FG_YELLOW, Console::BOLD);
+
+        Yii::$app->urlManager->setScriptUrl('/index.php');
+        Yii::$app->urlManager->setBaseUrl('');
+        Yii::setAlias('@webroot', Yii::getAlias('@frontend/web'));
+        Yii::setAlias('@web', '');
+        Yii::$app->set('response', new \yii\web\Response());
+        Yii::$app->set('request', new \yii\web\Request([
+            'url' => '/index.php',
+            'scriptUrl' => '/index.php',
+            'baseUrl' => '',
+            'cookieValidationKey' => 'audit_secret_key_12345678901234567890',
+            'enableCsrfValidation' => false,
+        ]));
+
+        // Find Special Template
+        $ptSpecial = PersonnelType::findOne(['code' => 'SPECIAL']);
+        $specialTpl = \common\models\EvaluationTemplate::find()->where(['personnel_type_id' => $ptSpecial->id])->one();
+        if (!$specialTpl) {
+            $this->stdout("✖ Special template not found\n", Console::FG_RED);
+            return 1;
+        }
+
+        $ver = $specialTpl->activeVersion ?: $specialTpl->versions[0];
+        $sec = \common\models\EvaluationSection::findOne(['template_version_id' => $ver->id, 'section_code' => 'SPEC_PERFORMANCE']);
+        if (!$sec) {
+            $this->stdout("✖ SPEC_PERFORMANCE section not found\n", Console::FG_RED);
+            return 1;
+        }
+
+        $spec16Item = \common\models\EvaluationItem::findOne(['evaluation_section_id' => $sec->id, 'item_code' => 'SPEC_1_6_SECONDARY']);
+        if (!$spec16Item) {
+            $this->stdout("✖ SPEC_1_6_SECONDARY item not found\n", Console::FG_RED);
+            return 1;
+        }
+
+        $this->stdout("✔ Found SPEC_1_6_SECONDARY (Item ID: {$spec16Item->id})\n", Console::FG_GREEN);
+
+        // Test updating options_data
+        $originalOptions = $spec16Item->options_data;
+        $testOptions = [
+            ['key' => '1', 'text' => 'ข้อ 1 ทดสอบแก้ไขข้อความภาระงานรอง'],
+            ['key' => '2', 'text' => 'ข้อ 2 ดำเนินงานผลสัมฤทธิ์ที่สำคัญ'],
+            ['key' => '3', 'text' => 'ข้อ 3 ภาระงานพิเศษที่เพิ่มเข้ามาใหม่'],
+        ];
+
+        $spec16Item->options_data = json_encode($testOptions, JSON_UNESCAPED_UNICODE);
+        if (!$spec16Item->save(false)) {
+            $this->stdout("✖ Failed to save options_data to SPEC_1_6_SECONDARY\n", Console::FG_RED);
+            return 1;
+        }
+        $this->stdout("✔ Successfully saved test options_data to DB\n", Console::FG_GREEN);
+
+        // Verify reloading
+        $reloaded = \common\models\EvaluationItem::findOne($spec16Item->id);
+        $parsed = is_string($reloaded->options_data) ? json_decode($reloaded->options_data, true) : $reloaded->options_data;
+        if (count($parsed) !== 3 || $parsed[2]['text'] !== 'ข้อ 3 ภาระงานพิเศษที่เพิ่มเข้ามาใหม่') {
+            $this->stdout("✖ Options data mismatch after reload\n", Console::FG_RED);
+            return 1;
+        }
+        $this->stdout("✔ Options data verified after reload (Count: " . count($parsed) . ")\n", Console::FG_GREEN);
+
+        // Verify Rendering Views with new options
+        $frontCtrl = new \frontend\controllers\EvaluationController('evaluation', Yii::$app);
+        $eval = Evaluation::find()->where(['id' => 1])->one(); // Evaluation 1 is SPECIAL
+        $selfOut = $frontCtrl->renderPartial('@frontend/views/evaluation/self_assess', [
+            'evaluation' => $eval,
+            'personnel' => $eval->personnel,
+            'templateVersion' => $ver,
+            'sections' => $ver->sections,
+            'competencies' => $ver->competencyDefinitions,
+            'answers' => [],
+            'compAnswers' => [],
+            'evidenceFiles' => [],
+            'isEditable' => true,
+        ]);
+        if (strpos($selfOut, 'ข้อ 3 ภาระงานพิเศษที่เพิ่มเข้ามาใหม่') === false) {
+            $this->stdout("✖ New option text not found in rendered self_assess.php\n", Console::FG_RED);
+            return 1;
+        }
+        $this->stdout("✔ Dynamic option successfully rendered in self_assess.php!\n", Console::FG_GREEN);
+
+        // Restore original options
+        $spec16Item->options_data = $originalOptions;
+        $spec16Item->save(false);
+        $this->stdout("✔ Restored original options_data\n", Console::FG_GREEN);
+        $this->stdout("=== ALL SPEC 1.6 TESTS PASSED! ===\n\n", Console::FG_CYAN, Console::BOLD);
+
+        return 0;
     }
 }
 

@@ -1742,7 +1742,7 @@ $csrfToken = Yii::$app->request instanceof \yii\web\Request ? Yii::$app->request
             $spec16Details = [];
         }
 
-        $spec10Options = [
+        $defaultSpec10Options = [
             '1' => 'เข้าร่วมกิจกรรม/โครงการ/งานของสำนักฯ และมหาวิทยาลัย (ระบุชื่อกิจกรรม/โครงการ พร้อมแนบหลักฐาน)',
             '2' => 'ดำเนินงานผลสัมฤทธิ์ที่สำคัญ (Key Results - KR) ตามประเด็นยุทธศาสตร์ของสำนักฯ (เช่น ผลงานที่แสดงให้เห็นชัดถึงการขับเคลื่อนการดำเนินแผนของสำนักฯ / มหาลัยฯ พร้อมแนบหลักฐาน)',
             '3' => 'เป็นคณะทำงานหรือมีส่วนร่วมในการดำเนินงาน เช่น งานความเสี่ยง / KM / งาน EdPEx (เช่น คำสั่งที่/ หนังสือมอบหมายหน้าที่/ หลักฐานที่เป็นลายลักษณ์อักษร พร้อมแนบหลักฐาน)',
@@ -1754,6 +1754,24 @@ $csrfToken = Yii::$app->request instanceof \yii\web\Request ? Yii::$app->request
             '9' => 'การหารายได้เข้าสำนักฯ (ระบุ พร้อมแนบหลักฐาน)',
             '10' => 'อื่น ๆ (ระบุ พร้อมแนบหลักฐาน)',
         ];
+        $spec10Options = [];
+        if ($spec16Item && !empty($spec16Item->options_data)) {
+            $parsed = is_string($spec16Item->options_data) ? json_decode($spec16Item->options_data, true) : $spec16Item->options_data;
+            if (is_string($parsed)) $parsed = json_decode($parsed, true);
+            if (is_array($parsed)) {
+                foreach ($parsed as $pIdx => $opt) {
+                    if (is_array($opt) && isset($opt['text'])) {
+                        $k = (string)($opt['key'] ?? ($pIdx + 1));
+                        $spec10Options[$k] = $opt['text'];
+                    } elseif (is_string($opt)) {
+                        $spec10Options[(string)($pIdx + 1)] = $opt;
+                    }
+                }
+            }
+        }
+        if (empty($spec10Options)) {
+            $spec10Options = $defaultSpec10Options;
+        }
     ?>
 
         <!-- SPECIAL SECTION 1: PERFORMANCE (50 POINTS FOR ITEMS 1.1-1.5) -->
@@ -1810,7 +1828,7 @@ $csrfToken = Yii::$app->request instanceof \yii\web\Request ? Yii::$app->request
                     <small class="text-white-50">เกณฑ์: 6-10 ข้อ = 5 คะแนน, 5 ข้อ = 4 คะแนน, 3-4 ข้อ = 3 คะแนน, 2 ข้อ = 2 คะแนน, 1 ข้อ = 1 คะแนน</small>
                 </div>
                 <div class="badge bg-warning text-dark fs-6">
-                    เลือกแล้ว: <span id="spec-sec-count-badge">0</span>/10 ข้อ | ระดับคะแนน: <span id="spec-sec-points-badge">0</span>/5 คะแนน
+                    เลือกแล้ว: <span id="spec-sec-count-badge">0</span>/<?= count($spec10Options) ?> ข้อ | ระดับคะแนน: <span id="spec-sec-points-badge">0</span>/5 คะแนน
                 </div>
             </div>
             <div class="card-body p-0">

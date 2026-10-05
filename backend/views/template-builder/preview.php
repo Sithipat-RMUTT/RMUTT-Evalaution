@@ -173,38 +173,97 @@ $acad5Levels = [
                                 </div>
                             </div>
 
-                            <!-- Interactive PDCA 5-Level Radio List -->
-                            <div class="list-group mt-2">
-                                <?php 
-                                $critMap = [];
-                                foreach ($item->criteria as $c) {
-                                    $critMap[$c->level_value] = $c->description;
+                            <?php if ($item->input_type === 'checkbox_list' || $item->item_code === 'SPEC_1_6_SECONDARY'): 
+                                $optList = [];
+                                if (!empty($item->options_data)) {
+                                    $parsed = is_string($item->options_data) ? json_decode($item->options_data, true) : $item->options_data;
+                                    if (is_string($parsed)) $parsed = json_decode($parsed, true);
+                                    if (is_array($parsed)) {
+                                        foreach ($parsed as $pIdx => $opt) {
+                                            if (is_array($opt) && isset($opt['text'])) {
+                                                $optList[] = ['key' => (string)($opt['key'] ?? ($pIdx + 1)), 'text' => $opt['text']];
+                                            } elseif (is_string($opt)) {
+                                                $optList[] = ['key' => (string)($pIdx + 1), 'text' => $opt];
+                                            }
+                                        }
+                                    }
                                 }
-                                $defaultDescriptions = [
-                                    1 => 'มีแผนการดำเนินงาน/แนวทางการดำเนินงาน',
-                                    2 => 'ดำเนินการตามแผน/แนวทางที่กำหนด',
-                                    3 => 'ทบทวน ตรวจสอบ ประเมินผลการดำเนินงาน',
-                                    4 => 'แก้ไขปรับปรุงกระบวนการ',
-                                    5 => 'ปรับปรุงต่อเนื่อง สร้างคุณค่าเพิ่มหรือนวัตกรรม',
-                                ];
-                                $pdcaTitles = [
-                                    1 => 'ระดับ 1 (Plan): ',
-                                    2 => 'ระดับ 2 (Do): ',
-                                    3 => 'ระดับ 3 (Check): ',
-                                    4 => 'ระดับ 4 (Act): ',
-                                    5 => 'ระดับ 5 (Impact): ',
-                                ];
-                                for ($lvl = 1; $lvl <= 5; $lvl++):
-                                    $desc = $critMap[$lvl] ?? ($defaultDescriptions[$lvl] ?? "เกณฑ์ความสำเร็จระดับ {$lvl}");
-                                ?>
-                                    <label class="list-group-item list-group-item-action d-flex align-items-start gap-2 py-2 criteria-row-<?= $item->id ?>" id="crit-label-<?= $item->id ?>-<?= $lvl ?>" style="cursor: pointer;">
-                                        <input class="form-check-input flex-shrink-0 mt-1" type="radio" name="preview_item_<?= $item->id ?>" value="<?= $lvl ?>" onchange="highlightPreviewCrit(<?= $item->id ?>, <?= $lvl ?>)">
-                                        <span class="small">
-                                            <strong><?= $pdcaTitles[$lvl] ?></strong> <?= Html::encode($desc) ?>
-                                        </span>
-                                    </label>
-                                <?php endfor; ?>
-                            </div>
+                                if (empty($optList)) {
+                                    $defaultOpts = [
+                                        '1' => 'เข้าร่วมกิจกรรม/โครงการ/งานของสำนักฯ และมหาวิทยาลัย (พร้อมแนบหลักฐาน)',
+                                        '2' => 'ดำเนินการขับเคลื่อนผลสัมฤทธิ์ที่สำคัญ (Key Results - KR) ตามประเด็นยุทธศาสตร์ (พร้อมแนบหลักฐาน)',
+                                        '3' => 'คณะทำงานหรือมีส่วนร่วมในการดำเนินงาน เช่น งานความเสี่ยง / KM / EdPEx (พร้อมแนบหลักฐาน)',
+                                        '4' => 'มีนวัตกรรมหรือการพัฒนากระบวนการทำงาน / LEAN / Kaizen (พร้อมแนบหลักฐาน)',
+                                        '5' => 'เข้าร่วมฝึกทักษะ หรือพัฒนาสมรรถนะวิชาชีพ และมีการรายงานการนำไปใช้ประโยชน์ (พร้อมแนบหลักฐาน)',
+                                        '6' => 'ได้รับการพัฒนาตนเองผ่านมาตรฐาน Certified จากหน่วยงานภายนอก (พร้อมแนบหลักฐาน)',
+                                        '7' => 'พัฒนาศักยภาพด้านการใช้ภาษาอังกฤษของสายสนับสนุน (พร้อมแนบหลักฐาน)',
+                                        '8' => 'งานส่งเสริมความเป็นนานาชาติ / บริการวิชาการ / ทำนุบำรุงศิลปวัฒนธรรม (พร้อมแนบหลักฐาน)',
+                                        '9' => 'การหารายได้เข้าสำนักฯ (พร้อมแนบหลักฐาน)',
+                                        '10' => 'อื่น ๆ ที่ได้รับมอบหมาย (พร้อมแนบหลักฐาน)',
+                                    ];
+                                    foreach ($defaultOpts as $k => $txt) {
+                                        $optList[] = ['key' => (string)$k, 'text' => $txt];
+                                    }
+                                }
+                            ?>
+                                <div class="alert alert-warning border-warning small mb-3">
+                                    <i class="bi bi-info-circle-fill me-1"></i>
+                                    <strong>เกณฑ์การให้คะแนน:</strong> 6-10 ข้อ = 5 คะแนน | 5 ข้อ = 4 คะแนน | 3-4 ข้อ = 3 คะแนน | 2 ข้อ = 2 คะแนน | 1 ข้อ = 1 คะแนน (เต็ม 5 คะแนน)
+                                </div>
+                                <div class="list-group mt-2">
+                                    <?php foreach ($optList as $oItem): ?>
+                                        <label class="list-group-item list-group-item-action d-flex align-items-start gap-2 py-2">
+                                            <input class="form-check-input flex-shrink-0 mt-1" type="checkbox" name="preview_spec16_<?= $item->id ?>[]" value="<?= Html::encode($oItem['key']) ?>">
+                                            <span class="small">
+                                                <strong class="text-warning-emphasis">ข้อ <?= Html::encode($oItem['key']) ?>:</strong> <?= Html::encode($oItem['text']) ?>
+                                            </span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+
+                            <?php elseif ($item->input_type === 'score_direct'): ?>
+                                <div class="mt-2 d-flex align-items-center gap-2">
+                                    <span class="small text-muted">กรอกคะแนนประเมินโดยตรง (0 - <?= $item->max_score ?> คะแนน):</span>
+                                    <div class="input-group input-group-sm" style="width: 140px;">
+                                        <input type="number" step="0.5" min="0" max="<?= $item->max_score ?>" class="form-control form-control-sm text-center fw-bold" value="<?= $item->max_score ?>">
+                                        <span class="input-group-text px-1">คะแนน</span>
+                                    </div>
+                                </div>
+
+                            <?php else: ?>
+                                <!-- Interactive PDCA 5-Level Radio List -->
+                                <div class="list-group mt-2">
+                                    <?php 
+                                    $critMap = [];
+                                    foreach ($item->criteria as $c) {
+                                        $critMap[$c->level_value] = $c->description;
+                                    }
+                                    $defaultDescriptions = [
+                                        1 => 'มีแผนการดำเนินงาน/แนวทางการดำเนินงาน',
+                                        2 => 'ดำเนินการตามแผน/แนวทางที่กำหนด',
+                                        3 => 'ทบทวน ตรวจสอบ ประเมินผลการดำเนินงาน',
+                                        4 => 'แก้ไขปรับปรุงกระบวนการ',
+                                        5 => 'ปรับปรุงต่อเนื่อง สร้างคุณค่าเพิ่มหรือนวัตกรรม',
+                                    ];
+                                    $pdcaTitles = [
+                                        1 => 'ระดับ 1 (Plan): ',
+                                        2 => 'ระดับ 2 (Do): ',
+                                        3 => 'ระดับ 3 (Check): ',
+                                        4 => 'ระดับ 4 (Act): ',
+                                        5 => 'ระดับ 5 (Impact): ',
+                                    ];
+                                    for ($lvl = 1; $lvl <= 5; $lvl++):
+                                        $desc = $critMap[$lvl] ?? ($defaultDescriptions[$lvl] ?? "เกณฑ์ความสำเร็จระดับ {$lvl}");
+                                    ?>
+                                        <label class="list-group-item list-group-item-action d-flex align-items-start gap-2 py-2 criteria-row-<?= $item->id ?>" id="crit-label-<?= $item->id ?>-<?= $lvl ?>" style="cursor: pointer;">
+                                            <input class="form-check-input flex-shrink-0 mt-1" type="radio" name="preview_item_<?= $item->id ?>" value="<?= $lvl ?>" onchange="highlightPreviewCrit(<?= $item->id ?>, <?= $lvl ?>)">
+                                            <span class="small">
+                                                <strong><?= $pdcaTitles[$lvl] ?></strong> <?= Html::encode($desc) ?>
+                                            </span>
+                                        </label>
+                                    <?php endfor; ?>
+                                </div>
+                            <?php endif; ?>
 
                         </div>
                     <?php endforeach; ?>

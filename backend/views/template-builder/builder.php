@@ -729,6 +729,32 @@ $defaultPdcaDescriptions = [
             </div>
 
             <div class="card-body p-0">
+                <?php 
+                $spec15Items = [];
+                $spec16Item = null;
+                if ($secSpec1 && !empty($secSpec1->items)) {
+                    foreach ($secSpec1->items as $it) {
+                        if ($it->item_code === 'SPEC_1_6_SECONDARY' || $it->input_type === 'checkbox_list' || strpos($it->name_th, '๑.๖') !== false) {
+                            $spec16Item = $it;
+                        } else {
+                            $spec15Items[] = $it;
+                        }
+                    }
+                }
+                ?>
+
+                <!-- 1.1 - 1.5: ๕ ปัจจัยผลสัมฤทธิ์ของงาน (๕๐ คะแนน) -->
+                <div class="p-3 border-bottom bg-light d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="badge bg-primary me-2">ส่วนที่ ๑.๑ - ๑.๕</span>
+                        <strong class="text-dark fs-6">ผลสัมฤทธิ์ของงาน (๕ ปัจจัย - รวม ๕๐ คะแนน)</strong>
+                        <div class="small text-muted mt-0.5">ประเมินตาม ๕ ปัจจัย: ปริมาณผลงาน (10), คุณภาพ (10), ความทันเวลา (10), ความคุ้มค่าทรัพยากร (10), ผลสัมฤทธิ์ (10)</div>
+                    </div>
+                    <div class="badge bg-primary-subtle text-primary border border-primary-subtle fs-6">
+                        คะแนนเต็ม: <span id="spec15-sum">50</span> / 50 คะแนน
+                    </div>
+                </div>
+
                 <div class="table-responsive">
                     <table class="table table-bordered align-middle mb-0 table-eval kpi-table">
                         <thead class="table-light text-center">
@@ -739,10 +765,8 @@ $defaultPdcaDescriptions = [
                                 <th style="width: 60px;">จัดการ</th>
                             </tr>
                         </thead>
-                        <tbody class="kpi-tbody">
-                            <?php 
-                            $spec1Items = ($secSpec1 && !empty($secSpec1->items)) ? $secSpec1->items : [];
-                            foreach ($spec1Items as $iIdx => $item): 
+                        <tbody class="kpi-tbody" id="spec15-tbody">
+                            <?php foreach ($spec15Items as $iIdx => $item): 
                                 $scoreVal = !empty($item->max_score) ? $item->max_score : ($item->max_weight ?: 10);
                             ?>
                                 <tr class="kpi-row" data-item-id="<?= $item->id ?>">
@@ -751,6 +775,7 @@ $defaultPdcaDescriptions = [
                                         <input type="text" class="form-control form-control-sm fw-semibold item-name-input mb-1" 
                                                value="<?= Html::encode($item->name_th) ?>" placeholder="ระบุรายการประเมิน...">
                                         <input type="hidden" class="item-type-select" value="<?= Html::encode($item->input_type ?: 'score_direct') ?>">
+                                        <input type="hidden" class="item-code-input" value="<?= Html::encode($item->item_code ?: ('SPEC_1_' . ($iIdx + 1))) ?>">
                                         <input type="hidden" class="item-ev-input" value="0">
                                     </td>
                                     <td class="text-center">
@@ -772,13 +797,114 @@ $defaultPdcaDescriptions = [
                             <tr>
                                 <td colspan="4" class="p-2.5">
                                     <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="addKpiRow(this, <?= $secSpec1 ? $secSpec1->id : 0 ?>, true)">
-                                        <i class="bi bi-plus-circle me-1"></i> เพิ่มรายการในด้านผลงาน
+                                        <i class="bi bi-plus-circle me-1"></i> เพิ่มรายการใน ๕ ปัจจัย
                                     </button>
                                 </td>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
+
+                <!-- 1.6 องค์ประกอบอื่น ๆ: ภาระงานรองหรืองานที่ได้รับมอบหมาย (๕ คะแนน) -->
+                <?php
+                $spec16OptionsList = [];
+                if ($spec16Item && !empty($spec16Item->options_data)) {
+                    $parsed = is_string($spec16Item->options_data) ? json_decode($spec16Item->options_data, true) : $spec16Item->options_data;
+                    if (is_string($parsed)) $parsed = json_decode($parsed, true);
+                    if (is_array($parsed)) {
+                        foreach ($parsed as $pIdx => $opt) {
+                            if (is_array($opt) && isset($opt['text'])) {
+                                $spec16OptionsList[] = [
+                                    'key' => (string)($opt['key'] ?? ($pIdx + 1)),
+                                    'text' => $opt['text']
+                                ];
+                            } elseif (is_string($opt)) {
+                                $spec16OptionsList[] = [
+                                    'key' => (string)($pIdx + 1),
+                                    'text' => $opt
+                                ];
+                            }
+                        }
+                    }
+                }
+                if (empty($spec16OptionsList)) {
+                    foreach ($spec10Options as $k => $text) {
+                        $spec16OptionsList[] = ['key' => (string)$k, 'text' => $text];
+                    }
+                }
+                ?>
+                <div class="p-3 border-top border-bottom bg-light mt-3 d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="badge bg-warning text-dark me-2">ส่วนที่ ๑.๖</span>
+                        <strong class="text-dark fs-6">๑.๖ องค์ประกอบอื่น ๆ : ภาระงานรองหรืองานที่ได้รับมอบหมาย</strong>
+                        <div class="small text-muted mt-0.5">
+                            <i class="bi bi-info-circle-fill text-primary me-1"></i>
+                            เกณฑ์การให้คะแนน: <strong>6-10 ข้อ = 5 คะแนน</strong> | <strong>5 ข้อ = 4 คะแนน</strong> | <strong>3-4 ข้อ = 3 คะแนน</strong> | <strong>2 ข้อ = 2 คะแนน</strong> | <strong>1 ข้อ = 1 คะแนน</strong>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-warning-subtle text-dark border fs-6">
+                            จำนวน: <span id="spec16-opt-count"><?= count($spec16OptionsList) ?></span> รายการ | คะแนนเต็ม: 5 คะแนน
+                        </span>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-white">
+                    <div class="table-responsive">
+                        <table class="table table-bordered align-middle mb-2 table-hover" id="spec16-options-table">
+                            <thead class="table-light text-center">
+                                <tr>
+                                    <th style="width: 60px;">ข้อ</th>
+                                    <th>รายการภาระงานรองหรืองานที่ได้รับมอบหมาย (Admin สามารถแก้ไขข้อความได้)</th>
+                                    <th style="width: 70px;">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="spec16-options-tbody">
+                                <?php foreach ($spec16OptionsList as $oIdx => $opt): ?>
+                                    <tr class="spec16-option-row">
+                                        <td class="text-center fw-bold spec16-row-num"><?= $oIdx + 1 ?></td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm spec16-option-text" 
+                                                   value="<?= Html::encode($opt['text']) ?>" placeholder="ระบุภาระงานรองหรือภาระงานอื่นที่ได้รับมอบหมาย...">
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeSpec16OptionRow(this)" title="ลบรายการนี้">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                            <tfoot class="table-light">
+                                <tr>
+                                    <td colspan="3" class="p-2.5">
+                                        <button type="button" class="btn btn-sm btn-outline-success fw-bold" onclick="addSpec16OptionRow()">
+                                            <i class="bi bi-plus-circle me-1"></i> เพิ่มรายการภาระงานรอง (+ เพิ่มข้อ)
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <small class="text-muted"><i class="bi bi-lightbulb text-warning me-1"></i> รายการภาระงานรองนี้จะแสดงเป็น Checkbox ให้บุคลากรเลือกปฏิบัติและแนบหลักฐานในแบบประเมินตนเอง</small>
+                </div>
+
+                <!-- Hidden master row for Item 1.6 to be collected by saveEntireGrid -->
+                <table class="d-none">
+                    <tbody>
+                        <tr class="kpi-row spec16-master-row" data-item-id="<?= $spec16Item ? $spec16Item->id : '' ?>" id="spec16-master-kpi-row">
+                            <td>
+                                <input type="hidden" class="item-name-input" value="<?= Html::encode($spec16Item ? $spec16Item->name_th : '๑.๖ องค์ประกอบอื่น ๆ (ภาระงานอื่น หรืองานที่ได้รับมอบหมาย - 5 คะแนน)') ?>">
+                                <input type="hidden" class="item-type-select" value="checkbox_list">
+                                <input type="hidden" class="item-code-input" value="SPEC_1_6_SECONDARY">
+                                <input type="hidden" class="item-ev-input" value="1">
+                            </td>
+                            <td>
+                                <input type="hidden" class="item-weight-input" value="5">
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -1028,14 +1154,27 @@ function recalcTotals() {
             form2Badge.className = (form2Total === 100) ? 'badge bg-success fs-6' : 'badge bg-danger fs-6';
         }
     } else if (IS_SPECIAL) {
+        let spec15Sum = 0;
+        document.querySelectorAll('#spec15-tbody .item-weight-input').forEach(function(inp) {
+            spec15Sum += parseFloat(inp.value) || 0;
+        });
+        const spec15SumEl = document.getElementById('spec15-sum');
+        if (spec15SumEl) spec15SumEl.innerText = spec15Sum.toFixed(0);
+
         let sec1Sum = 0;
         document.querySelectorAll('[data-section-code="SPEC_PERFORMANCE"] .item-weight-input').forEach(function(inp) {
             sec1Sum += parseFloat(inp.value) || 0;
         });
+        const sec1WeightEl = document.getElementById('sec-spec1-weight');
+        if (sec1WeightEl) sec1WeightEl.value = sec1Sum;
+
         let sec2Sum = 0;
         document.querySelectorAll('[data-section-code="SPEC_CHARACTERISTICS"] .item-weight-input').forEach(function(inp) {
             sec2Sum += parseFloat(inp.value) || 0;
         });
+        const sec2WeightEl = document.getElementById('sec-spec2-weight');
+        if (sec2WeightEl) sec2WeightEl.value = sec2Sum;
+
         const total = sec1Sum + sec2Sum;
         const totalBadge = document.getElementById('total-weight-badge');
         const totalNum = document.getElementById('total-weight-num');
@@ -1162,6 +1301,53 @@ function reindexKpiRows(tbody) {
         const numEl = r.querySelector('.kpi-row-number');
         if (numEl) numEl.innerText = idx + 1;
     });
+}
+
+// Spec 1.6 secondary tasks checklist functions
+function addSpec16OptionRow() {
+    const tbody = document.getElementById('spec16-options-tbody');
+    if (!tbody) return;
+    const tr = document.createElement('tr');
+    tr.className = 'spec16-option-row';
+    const nextNum = tbody.querySelectorAll('.spec16-option-row').length + 1;
+    tr.innerHTML = `
+        <td class="text-center fw-bold spec16-row-num">${nextNum}</td>
+        <td>
+            <input type="text" class="form-control form-control-sm spec16-option-text" 
+                   value="" placeholder="ระบุภาระงานรองหรือภาระงานอื่นที่ได้รับมอบหมาย...">
+        </td>
+        <td class="text-center">
+            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeSpec16OptionRow(this)" title="ลบรายการนี้">
+                <i class="bi bi-trash"></i>
+            </button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+    updateSpec16RowNumbers();
+    const input = tr.querySelector('.spec16-option-text');
+    if (input) input.focus();
+}
+
+function removeSpec16OptionRow(btn) {
+    const tbody = document.getElementById('spec16-options-tbody');
+    if (!tbody) return;
+    if (tbody.querySelectorAll('.spec16-option-row').length <= 1) {
+        alert('ต้องมีรายการภาระงานรองอย่างน้อย 1 รายการ');
+        return;
+    }
+    const tr = btn.closest('.spec16-option-row');
+    if (tr) tr.remove();
+    updateSpec16RowNumbers();
+}
+
+function updateSpec16RowNumbers() {
+    const rows = document.querySelectorAll('#spec16-options-tbody .spec16-option-row');
+    rows.forEach((r, idx) => {
+        const numCell = r.querySelector('.spec16-row-num');
+        if (numCell) numCell.innerText = idx + 1;
+    });
+    const countBadge = document.getElementById('spec16-opt-count');
+    if (countBadge) countBadge.innerText = rows.length;
 }
 
 // Competency Functions
@@ -1323,9 +1509,16 @@ function saveEntireGrid() {
                 const itemId = row.getAttribute('data-item-id') || '';
                 const itemNameInput = row.querySelector('.item-name-input');
                 const itemName = itemNameInput ? itemNameInput.value : '';
+                const itemCodeInput = row.querySelector('.item-code-input');
+                const itemCode = itemCodeInput ? itemCodeInput.value : '';
                 const itemWeightInput = row.querySelector('.item-weight-input');
                 const itemScoreVal = itemWeightInput ? parseFloat(itemWeightInput.value) || 0 : 0;
-                const reqEv = row.querySelector('.item-ev-input') && row.querySelector('.item-ev-input').checked ? 1 : 0;
+                
+                let reqEv = 0;
+                const evInput = row.querySelector('.item-ev-input');
+                if (evInput) {
+                    reqEv = (evInput.type === 'checkbox') ? (evInput.checked ? 1 : 0) : (parseInt(evInput.value) || 0);
+                }
 
                 const inp1 = row.querySelector('.crit-input-1');
                 const inp2 = row.querySelector('.crit-input-2');
@@ -1341,13 +1534,31 @@ function saveEntireGrid() {
                     5: inp5 ? inp5.value : DEFAULT_PDCA[5]
                 };
 
+                let optionsData = null;
+                if (itemType === 'checkbox_list' || itemCode === 'SPEC_1_6_SECONDARY') {
+                    const opts = [];
+                    document.querySelectorAll('#spec16-options-tbody .spec16-option-row').forEach(function(optRow, optIdx) {
+                        const textInp = optRow.querySelector('.spec16-option-text');
+                        const textVal = textInp ? textInp.value.trim() : '';
+                        if (textVal) {
+                            opts.push({
+                                key: (optIdx + 1).toString(),
+                                text: textVal
+                            });
+                        }
+                    });
+                    optionsData = opts;
+                }
+
                 secObj.items.push({
                     id: itemId,
+                    item_code: itemCode,
                     name_th: itemName,
                     weight: itemScoreVal,
                     max_score: itemScoreVal,
                     input_type: itemType,
                     requires_evidence: reqEv,
+                    options_data: optionsData,
                     criteria: crit
                 });
             });
