@@ -55,6 +55,8 @@ class MonitorController extends Controller
         $deptId = Yii::$app->request->get('dept_id');
         $typeId = Yii::$app->request->get('type_id');
         $status = Yii::$app->request->get('status');
+        $search = trim((string)Yii::$app->request->get('search', ''));
+        $activeTab = Yii::$app->request->get('tab', 'individual');
 
         $activeCycle = EvaluationCycle::findOne(['status' => [EvaluationCycle::STATUS_ACTIVE, EvaluationCycle::STATUS_EVALUATION]]);
         if (!$cycleId && $activeCycle) {
@@ -83,6 +85,15 @@ class MonitorController extends Controller
             $query->innerJoinWith('personnel')->andWhere(['{{%personnel}}.personnel_type_id' => $typeId]);
         }
 
+        if ($search !== '') {
+            $query->innerJoinWith('personnel')->andWhere([
+                'or',
+                ['like', '{{%personnel}}.first_name_th', $search],
+                ['like', '{{%personnel}}.last_name_th', $search],
+                ['like', '{{%personnel}}.employee_code', $search],
+            ]);
+        }
+
         $evaluations = $query->orderBy(['{{%evaluations}}.updated_at' => SORT_DESC])->all();
         $cycles = EvaluationCycle::find()->orderBy(['period_start' => SORT_DESC, 'id' => SORT_DESC])->all();
         if ($isSuperAdmin) {
@@ -95,6 +106,92 @@ class MonitorController extends Controller
         }
         $types = PersonnelType::find()->all();
 
+        // Compute Summary Stats by Department & Personnel Type (Consolidated Reporting)
+        $deptStats = [];
+        $typeStats = [];
+        if ($cycleId) {
+            $filterDeptIds = [];
+            if (!$isSuperAdmin && $myDeptId) {
+                $filterDeptIds = ($deptId && in_array((int)$deptId, $scopedDeptIds, true)) ? Department::getAllScopedDeptIds((int)$deptId) : $scopedDeptIds;
+            } elseif ($deptId) {
+                $filterDeptIds = Department::getAllScopedDeptIds((int)$deptId);
+            }
+
+            $deptListForStats = $departments;
+            if (!empty($filterDeptIds)) {
+                $deptListForStats = Department::find()->where(['id' => $filterDeptIds, 'status' => 1])->orderBy(['sort_order' => SORT_ASC, 'name_th' => SORT_ASC])->all();
+            }
+
+            foreach ($deptListForStats as $dept) {
+                $totalInDept = \common\models\Personnel::find()->where(['department_id' => $dept->id, 'status' => 10])->count();
+                $completedInDept = Evaluation::find()
+                    ->innerJoinWith('personnel')
+                    ->where([
+                        '{{%evaluations}}.evaluation_cycle_id' => $cycleId,
+                        '{{%personnel}}.department_id' => $dept->id,
+                        '{{%evaluations}}.status' => [Evaluation::STATUS_COMPLETED, Evaluation::STATUS_ACKNOWLEDGED],
+                    ])
+                    ->count();
+
+                $avgScore = EvaluationResult::find()
+                    ->innerJoin('{{%evaluations}}', '{{%evaluations}}.id = {{%evaluation_results}}.evaluation_id')
+                    ->innerJoin('{{%personnel}}', '{{%personnel}}.id = {{%evaluations}}.personnel_id')
+                    ->where([
+                        '{{%evaluations}}.evaluation_cycle_id' => $cycleId,
+                        '{{%personnel}}.department_id' => $dept->id,
+                        '{{%evaluations}}.status' => [Evaluation::STATUS_COMPLETED, Evaluation::STATUS_ACKNOWLEDGED],
+                    ])
+                    ->average('final_percentage');
+
+                $deptStats[] = [
+                    'department' => $dept,
+                    'total' => $totalInDept,
+                    'completed' => $completedInDept,
+                    'avg_score' => $avgScore ? round((float)$avgScore, 2) : 0,
+                ];
+            }
+
+            foreach ($types as $t) {
+                $typePersonnelQuery = \common\models\Personnel::find()->where(['personnel_type_id' => $t->id, 'status' => 10]);
+                if (!empty($filterDeptIds)) {
+                    $typePersonnelQuery->andWhere(['in', 'department_id', $filterDeptIds]);
+                }
+                $tTotal = $typePersonnelQuery->count();
+
+                $evalTypeQuery = Evaluation::find()
+                    ->innerJoinWith('personnel')
+                    ->where([
+                        '{{%evaluations}}.evaluation_cycle_id' => $cycleId,
+                        '{{%personnel}}.personnel_type_id' => $t->id,
+                        '{{%evaluations}}.status' => [Evaluation::STATUS_COMPLETED, Evaluation::STATUS_ACKNOWLEDGED],
+                    ]);
+                if (!empty($filterDeptIds)) {
+                    $evalTypeQuery->andWhere(['in', '{{%personnel}}.department_id', $filterDeptIds]);
+                }
+                $tCompleted = $evalTypeQuery->count();
+
+                $avgTypeScoreQuery = EvaluationResult::find()
+                    ->innerJoin('{{%evaluations}}', '{{%evaluations}}.id = {{%evaluation_results}}.evaluation_id')
+                    ->innerJoin('{{%personnel}}', '{{%personnel}}.id = {{%evaluations}}.personnel_id')
+                    ->where([
+                        '{{%evaluations}}.evaluation_cycle_id' => $cycleId,
+                        '{{%personnel}}.personnel_type_id' => $t->id,
+                        '{{%evaluations}}.status' => [Evaluation::STATUS_COMPLETED, Evaluation::STATUS_ACKNOWLEDGED],
+                    ]);
+                if (!empty($filterDeptIds)) {
+                    $avgTypeScoreQuery->andWhere(['in', '{{%personnel}}.department_id', $filterDeptIds]);
+                }
+                $tAvg = $avgTypeScoreQuery->average('final_percentage');
+
+                $typeStats[] = [
+                    'type' => $t,
+                    'total' => $tTotal,
+                    'completed' => $tCompleted,
+                    'avg_score' => $tAvg ? round((float)$tAvg, 2) : 0,
+                ];
+            }
+        }
+
         return $this->render('index', [
             'evaluations' => $evaluations,
             'cycles' => $cycles,
@@ -104,6 +201,11 @@ class MonitorController extends Controller
             'deptId' => $deptId,
             'typeId' => $typeId,
             'status' => $status,
+            'search' => $search,
+            'activeTab' => $activeTab,
+            'deptStats' => $deptStats,
+            'typeStats' => $typeStats,
+            'isSuperAdmin' => $isSuperAdmin,
         ]);
     }
 

@@ -23,19 +23,9 @@ if (!Yii::$app->user->isGuest) {
             'active' => $controllerId === 'site',
         ],
         [
-            'label' => '<i class="bi bi-ui-checks-grid me-1 text-primary"></i> ติดตามการประเมิน',
+            'label' => '<i class="bi bi-bar-chart-line-fill me-1 text-primary"></i> ติดตามและสรุปผล',
             'url' => ['/monitor/index'],
-            'active' => $controllerId === 'monitor',
-        ],
-        [
-            'label' => '<i class="bi bi-bar-chart-line-fill me-1 text-success"></i> รายงานสรุปผล/คะแนน',
-            'url' => ['/report/index'],
-            'active' => $controllerId === 'report',
-        ],
-        [
-            'label' => '<i class="bi bi-people-fill me-1"></i> ข้อมูลบุคลากร',
-            'url' => ['/personnel/index'],
-            'active' => $controllerId === 'personnel',
+            'active' => in_array($controllerId, ['monitor', 'report'], true),
         ],
     ];
 
@@ -48,6 +38,19 @@ if (!Yii::$app->user->isGuest) {
     }
 
     $canManageCycle = Yii::$app->user->can('admin') || $isSuperAdmin || Yii::$app->user->can('central_hr') || $isCentral;
+    if ($canManageCycle) {
+        $items[] = [
+            'label' => '<i class="bi bi-calendar3 me-1 text-info"></i> รอบการประเมิน',
+            'url' => ['/cycle/index'],
+            'active' => $controllerId === 'cycle',
+        ];
+    }
+
+    $items[] = [
+        'label' => '<i class="bi bi-people-fill me-1"></i> ข้อมูลบุคลากร',
+        'url' => ['/personnel/index'],
+        'active' => $controllerId === 'personnel',
+    ];
 
     if ($isSuperAdmin) {
         $items[] = [
@@ -58,18 +61,7 @@ if (!Yii::$app->user->isGuest) {
                     'url' => ['/user/index'],
                     'active' => $controllerId === 'user',
                 ],
-                [
-                    'label' => '<i class="bi bi-calendar3 me-1"></i> รอบการประเมิน',
-                    'url' => ['/cycle/index'],
-                    'active' => $controllerId === 'cycle',
-                ],
             ],
-        ];
-    } elseif ($canManageCycle) {
-        $items[] = [
-            'label' => '<i class="bi bi-calendar3 me-1"></i> รอบการประเมิน',
-            'url' => ['/cycle/index'],
-            'active' => $controllerId === 'cycle',
         ];
     }
 

@@ -35,6 +35,12 @@ class ReportController extends Controller
     {
         $cycleId = Yii::$app->request->get('cycle_id');
         $deptId = Yii::$app->request->get('dept_id');
+
+        // Redirect web requests to unified monitor/index hub
+        if (Yii::$app->request instanceof \yii\web\Request && !Yii::$app->request->isAjax) {
+            return $this->redirect(['/monitor/index', 'tab' => 'summary', 'cycle_id' => $cycleId, 'dept_id' => $deptId]);
+        }
+
         $activeCycle = EvaluationCycle::findOne(['status' => [EvaluationCycle::STATUS_ACTIVE, EvaluationCycle::STATUS_EVALUATION]]);
         if (!$cycleId && $activeCycle) {
             $cycleId = $activeCycle->id;

@@ -38,6 +38,11 @@ $individualEvaluations = $individualEvaluations ?? [];
                 <?= Html::a('<i class="bi bi-file-earmark-excel-fill text-success me-1"></i> ส่งออกข้อมูล Excel (CSV)', ['export-csv', 'cycle_id' => $cycleId, 'dept_id' => $deptId], ['class' => 'btn btn-outline-success shadow-sm']) ?>
             <?php endif; ?>
         </div>
+    <div class="alert alert-info border-info shadow-sm d-flex flex-wrap justify-content-between align-items-center mb-4 py-2.5 px-3 rounded-3 gap-2">
+        <div>
+            <i class="bi bi-info-circle-fill text-info me-1"></i> หน้ารายงานสรุปผลได้ถูกรวมเข้ากับเมนู <strong>"ติดตามและสรุปผล"</strong> เรียบร้อยแล้ว เพื่อให้สามารถติดตามรายบุคคลและดูสถิติภาพรวมได้ในหน้าเดียว
+        </div>
+        <?= Html::a('<i class="bi bi-arrow-right-circle me-1"></i> ไปยังหน้าติดตามและสรุปผล', ['/monitor/index', 'tab' => 'summary', 'cycle_id' => $cycleId, 'dept_id' => $deptId], ['class' => 'btn btn-sm btn-primary fw-semibold']) ?>
     </div>
 
     <!-- Filter Form -->

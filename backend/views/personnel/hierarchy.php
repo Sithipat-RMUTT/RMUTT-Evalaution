@@ -83,11 +83,12 @@ foreach ($personnelList as $p) {
                     </ul>
                 </div>
             <?php endif; ?>
-            <a href="<?= Url::to(['import', 'target_dept_id' => $currentDept?->id ?: $currentOrg?->id]) ?>" class="btn btn-sm btn-outline-success">
-                <i class="bi bi-file-earmark-arrow-up-fill me-1"></i> นำเข้าข้อมูลบุคลากร
-            </a>
-            <a href="<?= Url::to(['index', 'dept_id' => $currentDept?->id ?: $currentOrg?->id]) ?>" class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-people-fill me-1"></i> หน้ารายชื่อ
+            <div class="btn-group btn-group-sm shadow-sm">
+                <a href="<?= Url::to(['index', 'dept_id' => $currentDept?->id ?: $currentOrg?->id]) ?>" class="btn btn-outline-primary"><i class="bi bi-list-ul me-1"></i> รายชื่อ</a>
+                <span class="btn btn-primary active fw-semibold"><i class="bi bi-diagram-3-fill me-1"></i> ผังสายประเมิน</span>
+            </div>
+            <a href="<?= Url::to(['import', 'target_dept_id' => $currentDept?->id ?: $currentOrg?->id]) ?>" class="btn btn-sm btn-outline-success shadow-sm">
+                <i class="bi bi-file-earmark-arrow-up-fill me-1"></i> นำเข้า CSV
             </a>
         </div>
     </div>

@@ -39,10 +39,13 @@ $divisions = $divisions ?? [];
                 <?php endif; ?>
             </p>
         </div>
-        <div class="d-flex gap-2">
-            <?= Html::a('<i class="bi bi-diagram-3-fill me-1"></i> ผังสายการประเมิน', ['hierarchy', 'org_id' => $orgId, 'dept_id' => $deptId], ['class' => 'btn btn-outline-primary shadow-sm']) ?>
-            <?= Html::a('<i class="bi bi-file-earmark-arrow-up-fill me-1"></i> นำเข้าข้อมูล (CSV)', ['import', 'target_dept_id' => $deptId ?: $orgId], ['class' => 'btn btn-outline-success shadow-sm']) ?>
-            <?= Html::a('<i class="bi bi-person-plus-fill me-1"></i> เพิ่มบุคลากรใหม่', ['create'], ['class' => 'btn btn-primary shadow-sm']) ?>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <div class="btn-group btn-group-sm shadow-sm">
+                <span class="btn btn-primary active fw-semibold"><i class="bi bi-list-ul me-1"></i> รายชื่อ</span>
+                <?= Html::a('<i class="bi bi-diagram-3-fill me-1"></i> ผังสายประเมิน', ['hierarchy', 'org_id' => $orgId, 'dept_id' => $deptId], ['class' => 'btn btn-outline-primary']) ?>
+            </div>
+            <?= Html::a('<i class="bi bi-file-earmark-arrow-up-fill me-1"></i> นำเข้า CSV', ['import', 'target_dept_id' => $deptId ?: $orgId], ['class' => 'btn btn-sm btn-outline-success shadow-sm']) ?>
+            <?= Html::a('<i class="bi bi-person-plus-fill me-1"></i> เพิ่มบุคลากรใหม่', ['create'], ['class' => 'btn btn-sm btn-primary shadow-sm']) ?>
         </div>
     </div>
 
