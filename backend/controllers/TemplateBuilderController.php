@@ -1257,25 +1257,27 @@ class TemplateBuilderController extends Controller
                         $item->save(false);
                         $existingItemIds[] = $item->id;
 
-                        // Save Criteria 1-5
+                        // Save Criteria 1-5 (Only for pdca_level or when criteria provided)
                         $criteriaData = $iData['criteria'] ?? [];
-                        $pdcaLabels = [
-                            1 => 'ระดับ 1 (Plan)',
-                            2 => 'ระดับ 2 (Do)',
-                            3 => 'ระดับ 3 (Check)',
-                            4 => 'ระดับ 4 (Act)',
-                            5 => 'ระดับ 5 (Impact)',
-                        ];
+                        if ($item->input_type === 'pdca_level' || (!empty($criteriaData) && (!empty($criteriaData[1]) || !empty($criteriaData[2])))) {
+                            $pdcaLabels = [
+                                1 => 'ระดับ 1 (Plan)',
+                                2 => 'ระดับ 2 (Do)',
+                                3 => 'ระดับ 3 (Check)',
+                                4 => 'ระดับ 4 (Act)',
+                                5 => 'ระดับ 5 (Impact)',
+                            ];
 
-                        for ($lvl = 1; $lvl <= 5; $lvl++) {
-                            $crit = EvaluationCriteria::findOne(['evaluation_item_id' => $item->id, 'level_value' => $lvl])
-                                ?: new EvaluationCriteria(['evaluation_item_id' => $item->id, 'level_value' => $lvl]);
+                            for ($lvl = 1; $lvl <= 5; $lvl++) {
+                                $crit = EvaluationCriteria::findOne(['evaluation_item_id' => $item->id, 'level_value' => $lvl])
+                                    ?: new EvaluationCriteria(['evaluation_item_id' => $item->id, 'level_value' => $lvl]);
 
-                            $crit->level_label = $pdcaLabels[$lvl];
-                            $crit->score_value = $lvl;
-                            $crit->description = $criteriaData[$lvl] ?? "เกณฑ์ความสำเร็จระดับ {$lvl}";
-                            $crit->sort_order = $lvl;
-                            $crit->save(false);
+                                $crit->level_label = $pdcaLabels[$lvl];
+                                $crit->score_value = $lvl;
+                                $crit->description = $criteriaData[$lvl] ?? "เกณฑ์ความสำเร็จระดับ {$lvl}";
+                                $crit->sort_order = $lvl;
+                                $crit->save(false);
+                            }
                         }
                     }
 
