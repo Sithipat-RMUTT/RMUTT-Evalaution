@@ -44,6 +44,8 @@ use common\models\EvaluationCycle;
 /** @var array|null $deptProgress */
 /** @var array|null $competencyGaps */
 /** @var array|null $recentEvaluations */
+/** @var array|null $deptCycleOverview */
+/** @var common\models\DepartmentEvaluationCycle|null $myDeptCycleRecord */
 
 $this->title = 'แผงควบคุมผลสัมฤทธิ์และสนับสนุนการตัดสินใจของผู้บริหาร - มทร.ธัญบุรี';
 
@@ -91,6 +93,8 @@ $deptBenchmark = $deptBenchmark ?? [];
 $deptProgress = $deptProgress ?? [];
 $competencyGaps = $competencyGaps ?? [];
 $recentEvaluations = $recentEvaluations ?? [];
+$deptCycleOverview = $deptCycleOverview ?? [];
+$myDeptCycleRecord = $myDeptCycleRecord ?? null;
 ?>
 
 <div class="site-index py-2">
@@ -186,6 +190,134 @@ $recentEvaluations = $recentEvaluations ?? [];
             </form>
         </div>
     </div>
+
+    <!-- Section 1.5: Department Evaluation Cycle Activation Monitor (Central Governance) -->
+    <?php if (($isSuperAdmin || \common\models\Department::isCentralAdmin()) && !empty($deptCycleOverview['items'])): ?>
+        <div class="card card-rmutt shadow-sm mb-4 border-top border-4 border-info">
+            <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center py-3 gap-2">
+                <div>
+                    <h6 class="fw-bold text-dark mb-0">
+                        <i class="bi bi-broadcast text-info me-2"></i> ติดตามสถานะการเปิดรอบการประเมินรายหน่วยงาน (Department Cycle Activation Monitor)
+                    </h6>
+                    <small class="text-muted">
+                        การกระจายอำนาจให้ผู้ดูแลแต่ละหน่วยงานเป็นผู้เปิดรอบ โดยแบบประเมินจะถูกล็อก 100% ทันทีที่เปิดรอบ
+                    </small>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                        <i class="bi bi-play-circle-fill me-1"></i> เปิดแล้ว: <?= $deptCycleOverview['activeCount'] ?> หน่วยงาน
+                    </span>
+                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1">
+                        <i class="bi bi-hourglass-split me-1"></i> รอเปิดรอบ: <?= $deptCycleOverview['pendingCount'] ?> หน่วยงาน
+                    </span>
+                    <?php if ($deptCycleOverview['completedCount'] > 0): ?>
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                            <i class="bi bi-check-all me-1"></i> ครบ 100%: <?= $deptCycleOverview['completedCount'] ?> หน่วยงาน
+                        </span>
+                    <?php endif; ?>
+                    <?= Html::a('<i class="bi bi-gear me-1"></i> จัดการรอบประเมิน', ['/cycle/index'], ['class' => 'btn btn-sm btn-outline-primary fw-semibold']) ?>
+                </div>
+            </div>
+            <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+                <table class="table table-hover table-admin align-middle mb-0 small">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th>หน่วยงานหลัก (ฝ่าย / สำนัก)</th>
+                            <th class="text-center" style="width: 140px;">สถานะรอบ</th>
+                            <th style="width: 200px;">ผู้เปิดรอบ / วันเวลา</th>
+                            <th class="text-center" style="width: 140px;">ความคืบหน้าประเมิน</th>
+                            <th class="text-center" style="width: 130px;">การจัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($deptCycleOverview['items'] as $item): ?>
+                            <tr>
+                                <td>
+                                    <strong class="text-dark"><?= Html::encode($item['department']->name_th) ?></strong>
+                                    <small class="text-muted d-block"><?= Html::encode($item['department']->code ?: '-') ?></small>
+                                </td>
+                                <td class="text-center">
+                                    <?php if ($item['status'] === \common\models\DepartmentEvaluationCycle::STATUS_ACTIVE): ?>
+                                        <span class="badge bg-success"><i class="bi bi-play-circle me-1"></i> เปิดรอบแล้ว</span>
+                                    <?php elseif ($item['status'] === \common\models\DepartmentEvaluationCycle::STATUS_COMPLETED): ?>
+                                        <span class="badge bg-primary"><i class="bi bi-check-circle-fill me-1"></i> ครบ 100%</span>
+                                    <?php elseif ($item['status'] === \common\models\DepartmentEvaluationCycle::STATUS_CLOSED): ?>
+                                        <span class="badge bg-secondary"><i class="bi bi-lock-fill me-1"></i> ปิดรอบแล้ว</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-warning text-dark"><i class="bi bi-clock-history me-1"></i> รอเปิดรอบ</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if ($item['openedAt']): ?>
+                                        <div class="fw-semibold text-dark"><i class="bi bi-person me-1"></i><?= Html::encode($item['openerName'] ?: 'Admin') ?></div>
+                                        <small class="text-muted"><?= $item['openedAt'] ?></small>
+                                    <?php else: ?>
+                                        <span class="text-muted fst-italic">- ยังไม่มีการเปิดรอบ -</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-center">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="fw-semibold"><?= $item['evalDone'] ?> / <?= $item['staffCount'] ?> คน</span>
+                                        <span class="text-muted"><?= $item['progressPct'] ?>%</span>
+                                    </div>
+                                    <div class="progress" style="height: 6px;">
+                                        <div class="progress-bar <?= $item['progressPct'] >= 100 ? 'bg-success' : 'bg-primary' ?>" style="width: <?= min(100, $item['progressPct']) ?>%"></div>
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <?= Html::a('<i class="bi bi-eye me-1"></i> ดูเกณฑ์', ['/template-builder/index', 'dept_id' => $item['department']->id], ['class' => 'btn btn-xs btn-outline-secondary py-1 px-2']) ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <!-- Agency Admin: Department Activation Callout -->
+    <?php if (!$isSuperAdmin && !\common\models\Department::isCentralAdmin() && $myDepartment): ?>
+        <?php $myStatus = $myDeptCycleRecord ? $myDeptCycleRecord->status : \common\models\DepartmentEvaluationCycle::STATUS_PENDING; ?>
+        <?php if ($myStatus === \common\models\DepartmentEvaluationCycle::STATUS_PENDING): ?>
+            <div class="alert alert-warning border-2 border-warning shadow-sm d-flex flex-wrap align-items-center justify-content-between mb-4 rounded-3 p-3 gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-warning text-dark rounded-circle p-2 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px;">
+                        <i class="bi bi-hourglass-top fs-4"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold text-dark fs-6">
+                            หน่วยงานของท่าน: ยังไม่ได้เปิดรอบการประเมิน (สถานะ: จัดเตรียมแบบประเมิน)
+                        </div>
+                        <div class="small text-muted mt-1">
+                            บุคลากรในสังกัดยังไม่สามารถเข้าทำแบบประเมินตนเองได้ จนกว่าผู้ดูแลหน่วยงานจะกด <strong>"เปิดรอบการประเมิน"</strong> 
+                            ท่านสามารถตรวจสอบและปรับแก้แบบประเมินได้ในหน้านี้ เมื่อเปิดรอบแล้ว แบบประเมินจะถูกล็อก 100% ทันทีเพื่อความโปร่งใส
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <?= Html::a('<i class="bi bi-file-earmark-ruled me-1"></i> ตรวจสอบแบบประเมิน', ['/template-builder/index'], ['class' => 'btn btn-outline-dark fw-semibold']) ?>
+                    <?= Html::a('<i class="bi bi-play-circle-fill me-1"></i> ไปหน้าเปิดรอบการประเมิน', ['/cycle/index'], ['class' => 'btn btn-warning text-dark fw-bold shadow-sm']) ?>
+                </div>
+            </div>
+        <?php else: ?>
+            <div class="alert alert-success border-2 border-success-subtle shadow-sm d-flex flex-wrap align-items-center justify-content-between mb-4 rounded-3 p-3 bg-success-subtle gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-success text-white rounded-circle p-2 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px;">
+                        <i class="bi bi-check-circle-fill fs-4"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold text-success fs-6">
+                            รอบการประเมินของหน่วยงานเปิดใช้งานแล้ว (กำลังดำเนินการประเมิน)
+                        </div>
+                        <div class="small text-muted mt-1">
+                            โครงสร้างแบบประเมินถูกล็อกถาวรเพื่อความถูกต้องและเป็นธรรม บุคลากรสามารถประเมินตนเอง และผู้บังคับบัญชาสามารถประเมินได้ตามปกติ
+                        </div>
+                    </div>
+                </div>
+                <?= Html::a('<i class="bi bi-calendar-check me-1"></i> ดูสถานะรอบประเมิน', ['/cycle/index'], ['class' => 'btn btn-success fw-semibold shadow-sm']) ?>
+            </div>
+        <?php endif; ?>
+    <?php endif; ?>
 
     <!-- Section 2: Executive Budget Quota & Grade Inflation Notification Banner -->
     <?php if ($quotaStatus['is_over_quota']): ?>

@@ -15,6 +15,7 @@ use common\models\Department;
 use common\models\PersonnelType;
 use common\models\EvaluationCompetencyAnswer;
 use common\models\CompetencyDefinition;
+use common\models\DepartmentEvaluationCycle;
 
 /**
  * SiteController for HR Admin backend.
@@ -401,6 +402,73 @@ class SiteController extends Controller
         // 11. Recent evaluations
         $recentEvaluations = array_slice($evaluatedItems, 0, 8);
 
+        // 12. Department Evaluation Cycle Overview (Central Monitoring & Agency Status)
+        $deptCycleOverview = [];
+        $myDeptCycleRecord = null;
+        if ($selectedCycle) {
+            $rootDepts = Department::find()->where(['parent_id' => null])->orderBy(['name_th' => SORT_ASC])->all();
+            $deptCycles = DepartmentEvaluationCycle::find()
+                ->where(['evaluation_cycle_id' => $selectedCycle->id])
+                ->indexBy('department_id')
+                ->all();
+
+            $totalRoot = count($rootDepts);
+            $activeCount = 0;
+            $completedCount = 0;
+            $pendingCount = 0;
+
+            $items = [];
+            foreach ($rootDepts as $rd) {
+                $scopedIds = Department::getAllScopedDeptIds($rd->id);
+                $staffCount = (int)Personnel::find()->where(['in', 'department_id', $scopedIds])->andWhere(['is_active' => true])->count();
+                $evalDone = (int)Evaluation::find()
+                    ->where(['evaluation_cycle_id' => $selectedCycle->id])
+                    ->andWhere(['in', 'department_id', $scopedIds])
+                    ->andWhere(['status' => [Evaluation::STATUS_COMPLETED, Evaluation::STATUS_ACKNOWLEDGED]])
+                    ->count();
+
+                $dc = $deptCycles[$rd->id] ?? null;
+                $st = $dc ? $dc->status : DepartmentEvaluationCycle::STATUS_PENDING;
+
+                // Auto-mark completed if active and 100% evaluated
+                if ($st === DepartmentEvaluationCycle::STATUS_ACTIVE && $staffCount > 0 && $evalDone >= $staffCount) {
+                    $st = DepartmentEvaluationCycle::STATUS_COMPLETED;
+                }
+
+                if ($st === DepartmentEvaluationCycle::STATUS_ACTIVE) {
+                    $activeCount++;
+                } elseif ($st === DepartmentEvaluationCycle::STATUS_COMPLETED) {
+                    $completedCount++;
+                } else {
+                    $pendingCount++;
+                }
+
+                $items[] = [
+                    'department' => $rd,
+                    'cycleRecord' => $dc,
+                    'status' => $st,
+                    'staffCount' => $staffCount,
+                    'evalDone' => $evalDone,
+                    'progressPct' => $staffCount > 0 ? round(($evalDone / $staffCount) * 100, 1) : 0,
+                    'openedAt' => $dc && $dc->opened_at ? Yii::$app->formatter->asDatetime($dc->opened_at, 'php:d/m/Y H:i') : null,
+                    'openerName' => $dc && $dc->opener ? $dc->opener->username : null,
+                ];
+            }
+
+            $deptCycleOverview = [
+                'totalRoot' => $totalRoot,
+                'activeCount' => $activeCount,
+                'completedCount' => $completedCount,
+                'pendingCount' => $pendingCount,
+                'items' => $items,
+            ];
+
+            if ($myDeptId) {
+                $myRootId = DepartmentEvaluationCycle::getRootDeptId($myDeptId);
+                $myDeptCycleRecord = $deptCycles[$myRootId] ?? null;
+            }
+        }
+
         return $this->render('index', [
             'isSuperAdmin' => $isSuperAdmin,
             'myDepartment' => $myDepartment,
@@ -440,6 +508,8 @@ class SiteController extends Controller
             'deptProgress' => $deptProgress,
             'competencyGaps' => $competencyGaps,
             'recentEvaluations' => $recentEvaluations,
+            'deptCycleOverview' => $deptCycleOverview,
+            'myDeptCycleRecord' => $myDeptCycleRecord,
         ]);
     }
 

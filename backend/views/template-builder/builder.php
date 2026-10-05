@@ -178,9 +178,21 @@ $defaultPdcaDescriptions = [
     border-radius: 6px;
     padding: 10px 14px;
 }
+.builder-locked input, .builder-locked textarea, .builder-locked select {
+    pointer-events: none;
+    background-color: #f8fafc !important;
+}
+.builder-locked button[onclick*="add"], .builder-locked button[onclick*="remove"], .builder-locked .btn-save-action {
+    display: none !important;
+}
 </style>
 
-<div class="template-builder-view py-3 official-form-doc">
+<?php
+$isLocked = $isLocked ?? false;
+$lockReason = $lockReason ?? '';
+?>
+
+<div class="template-builder-view py-3 official-form-doc <?= $isLocked ? 'builder-locked' : '' ?>">
 
     <!-- 1. Top Floating Header / Status Bar (Same as self_assess.php) -->
     <div class="card card-rmutt shadow-sm mb-4 sticky-eval-bar border-primary border-2">
@@ -251,27 +263,48 @@ $defaultPdcaDescriptions = [
                         'title' => 'เปิดดูแบบฟอร์มเสมือนจริงที่บุคลากรและกรรมการจะใช้ประเมิน'
                     ]) ?>
 
-                    <button type="button" class="btn btn-sm btn-success shadow-sm fw-bold px-3" onclick="saveEntireGrid()" id="btn-save-top">
-                        <i class="bi bi-floppy-fill me-1"></i> บันทึกแบบประเมิน
-                    </button>
+                    <?php if ($isLocked): ?>
+                        <span class="badge bg-danger py-2 px-3 fs-6 shadow-sm"><i class="bi bi-lock-fill me-1"></i> โครงสร้างถูกล็อก (ห้ามแก้ไข)</span>
+                    <?php else: ?>
+                        <button type="button" class="btn btn-sm btn-success shadow-sm fw-bold px-3 btn-save-action" onclick="saveEntireGrid()" id="btn-save-top">
+                            <i class="bi bi-floppy-fill me-1"></i> บันทึกแบบประเมิน
+                        </button>
+                    <?php endif; ?>
                 </div>
 
             </div>
         </div>
     </div>
 
-    <?php
-    $evalCount = \common\models\Evaluation::find()->where(['template_version_id' => $version->id])->count();
-    if ($evalCount > 0):
-    ?>
-    <div class="alert alert-info py-2.5 px-3 mb-4 d-flex align-items-center justify-content-between rounded-3 shadow-sm border-info bg-info-subtle">
-        <div class="small">
-            <i class="bi bi-info-circle-fill me-2 text-primary fs-6"></i>
-            <strong>ข้อมูลการใช้งาน:</strong> แบบประเมินเวอร์ชันนี้มีบุคลากรในรอบปัจจุบันผูกใช้งานอยู่ <strong><?= $evalCount ?></strong> รายการ 
-            <span class="text-muted">(เมื่อท่านแก้ไขและกดบันทึก ระบบจะปรับปรุงโครงสร้างและข้อคำถามให้แบบประเมินของบุคลากรเป็นข้อมูลล่าสุดทันที)</span>
+    <?php if ($isLocked): ?>
+    <div class="alert alert-danger py-3 px-4 mb-4 d-flex align-items-center gap-3 rounded-3 shadow-sm border-danger">
+        <i class="bi bi-shield-lock-fill fs-2 text-danger flex-shrink-0"></i>
+        <div>
+            <h6 class="alert-heading fw-bold mb-1 text-danger">
+                <i class="bi bi-lock-fill me-1"></i> แบบประเมินนี้ถูกล็อกโครงสร้างถาวร (Locked - Read Only)
+            </h6>
+            <div class="small text-danger-emphasis">
+                <?= Html::encode($lockReason) ?>
+            </div>
+            <div class="small text-muted mt-1">
+                <i class="bi bi-info-circle me-1"></i> ระบบล็อกการแก้ไขตัวชี้วัด ค่าน้ำหนัก และข้อคำถามเพื่อรักษาความถูกต้องและเป็นธรรมต่อผู้รับการประเมิน
+            </div>
         </div>
-        <span class="badge bg-primary">รอบประเมินปัจจุบัน</span>
     </div>
+    <?php else: ?>
+        <?php
+        $evalCount = \common\models\Evaluation::find()->where(['template_version_id' => $version->id])->count();
+        if ($evalCount > 0):
+        ?>
+        <div class="alert alert-info py-2.5 px-3 mb-4 d-flex align-items-center justify-content-between rounded-3 shadow-sm border-info bg-info-subtle">
+            <div class="small">
+                <i class="bi bi-info-circle-fill me-2 text-primary fs-6"></i>
+                <strong>ข้อมูลการใช้งาน:</strong> แบบประเมินเวอร์ชันนี้มีบุคลากรในรอบปัจจุบันผูกใช้งานอยู่ <strong><?= $evalCount ?></strong> รายการ 
+                <span class="text-muted">(เมื่อท่านแก้ไขและกดบันทึก ระบบจะปรับปรุงโครงสร้างและข้อคำถามให้แบบประเมินของบุคลากรเป็นข้อมูลล่าสุดทันที)</span>
+            </div>
+            <span class="badge bg-primary">รอบประเมินปัจจุบัน</span>
+        </div>
+        <?php endif; ?>
     <?php endif; ?>
 
     <!-- 2. Official Document Header Card (Exact styling from self_assess.php) -->
@@ -1091,9 +1124,13 @@ $defaultPdcaDescriptions = [
                     'class' => 'btn btn-outline-info text-dark shadow-sm',
                     'target' => '_blank'
                 ]) ?>
-                <button type="button" class="btn btn-success px-4 fw-bold shadow-sm" onclick="saveEntireGrid()" id="btn-save-bottom">
-                    <i class="bi bi-floppy-fill me-1"></i> บันทึกข้อมูลแบบประเมินทั้งหมด
-                </button>
+                <?php if ($isLocked): ?>
+                    <span class="badge bg-danger py-2.5 px-3 fs-6 shadow-sm"><i class="bi bi-lock-fill me-1"></i> โครงสร้างถูกล็อก (ห้ามแก้ไข)</span>
+                <?php else: ?>
+                    <button type="button" class="btn btn-success px-4 fw-bold shadow-sm btn-save-action" onclick="saveEntireGrid()" id="btn-save-bottom">
+                        <i class="bi bi-floppy-fill me-1"></i> บันทึกข้อมูลแบบประเมินทั้งหมด
+                    </button>
+                <?php endif; ?>
             </div>
         </div>
     </div>

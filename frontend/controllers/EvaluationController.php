@@ -19,6 +19,7 @@ use common\models\EvaluationResult;
 use common\models\EvidenceFile;
 use common\models\Personnel;
 use common\models\PersonnelType;
+use common\models\DepartmentEvaluationCycle;
 use common\models\AuditLog;
 use common\models\Notification;
 use common\services\EvaluationCalculatorService;
@@ -138,8 +139,14 @@ class EvaluationController extends Controller
             ->orderBy(['id' => SORT_DESC])
             ->all();
 
-        // If active cycle exists and user has no evaluation yet, auto-create one!
-        if ($activeCycle && !Evaluation::findOne(['evaluation_cycle_id' => $activeCycle->id, 'personnel_id' => $personnel->id])) {
+        // Check if department cycle is pending (agency admin hasn't opened it yet)
+        $deptCyclePending = false;
+        if ($activeCycle && $personnel->department_id) {
+            $deptCyclePending = DepartmentEvaluationCycle::isDepartmentCyclePending($activeCycle->id, $personnel->department_id);
+        }
+
+        // If active cycle exists, department cycle is open, and user has no evaluation yet, auto-create one!
+        if ($activeCycle && !$deptCyclePending && !Evaluation::findOne(['evaluation_cycle_id' => $activeCycle->id, 'personnel_id' => $personnel->id])) {
             $templateVersion = $activeCycle->getTemplateVersionForPersonnel($personnel);
 
             if ($templateVersion) {
@@ -227,6 +234,7 @@ class EvaluationController extends Controller
             'isSupervisor' => $isSupervisor,
             'isDivisionHead' => $isDivisionHead,
             'isSectionHead' => $isSectionHead,
+            'deptCyclePending' => $deptCyclePending,
         ]);
     }
 
@@ -241,6 +249,12 @@ class EvaluationController extends Controller
         // Check ownership
         if ($evaluation->personnel_id !== $personnel->id && !Yii::$app->user->can('admin')) {
             throw new ForbiddenHttpException('คุณไม่มีสิทธิ์เข้าถึงแบบประเมินนี้');
+        }
+
+        // Check if department cycle is pending (agency admin hasn't opened it yet)
+        if ($evaluation->cycle && DepartmentEvaluationCycle::isDepartmentCyclePending($evaluation->cycle->id, $evaluation->personnel->department_id)) {
+            Yii::$app->session->setFlash('warning', 'หน่วยงานของท่านยังไม่ได้เปิดรอบการประเมิน (อยู่ระหว่างจัดเตรียมแบบประเมิน) โปรดรอการเปิดรอบจากผู้ดูแลหน่วยงาน');
+            return $this->redirect(['index']);
         }
 
         // Check editable status

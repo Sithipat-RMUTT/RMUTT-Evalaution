@@ -22,6 +22,7 @@ use common\models\Personnel;
 use common\models\PersonnelType;
 use common\models\Evaluation;
 use common\models\EvaluationCycle;
+use common\models\DepartmentEvaluationCycle;
 use common\models\CycleTemplateMapping;
 use common\models\AuditLog;
 
@@ -95,8 +96,79 @@ class TemplateBuilderController extends Controller
         return true;
     }
 
+    /**
+     * Check if a template is strictly locked due to active evaluation cycle or completed evaluations.
+     * When locked, NO ONE (including Superadmin) can modify the template structure.
+     */
+    public static function isTemplateLocked(EvaluationTemplate $template, ?TemplateVersion $version = null): array
+    {
+        $activeCycle = EvaluationCycle::find()
+            ->where(['status' => [EvaluationCycle::STATUS_ACTIVE, EvaluationCycle::STATUS_EVALUATION]])
+            ->orderBy(['id' => SORT_DESC])
+            ->one();
+
+        if ($activeCycle) {
+            // 1. Department-specific template
+            if (!empty($template->department_id)) {
+                $rootDeptId = DepartmentEvaluationCycle::getRootDeptId($template->department_id);
+                $deptCycle = DepartmentEvaluationCycle::findOne([
+                    'evaluation_cycle_id' => $activeCycle->id,
+                    'department_id' => $rootDeptId,
+                ]);
+
+                if ($deptCycle && in_array($deptCycle->status, [DepartmentEvaluationCycle::STATUS_ACTIVE, DepartmentEvaluationCycle::STATUS_COMPLETED, DepartmentEvaluationCycle::STATUS_CLOSED], true)) {
+                    $statusText = $deptCycle->status === DepartmentEvaluationCycle::STATUS_CLOSED ? 'ปิดรอบการประเมินแล้ว' : 'เปิดรอบการประเมินแล้ว';
+                    return [
+                        'locked' => true,
+                        'dept_cycle' => $deptCycle,
+                        'cycle' => $activeCycle,
+                        'reason' => "หน่วยงานได้{$statusText}ประจำรอบ {$activeCycle->name_th} ระบบได้ทำการล็อกโครงสร้างแบบประเมินถาวรเพื่อความถูกต้องและเป็นธรรมต่อผู้รับการประเมิน (ไม่อนุญาตให้แก้ไข)",
+                    ];
+                }
+            } else {
+                // 2. Central master template (department_id IS NULL)
+                $activeDeptCount = DepartmentEvaluationCycle::find()
+                    ->where(['evaluation_cycle_id' => $activeCycle->id])
+                    ->andWhere(['in', 'status', [DepartmentEvaluationCycle::STATUS_ACTIVE, DepartmentEvaluationCycle::STATUS_COMPLETED, DepartmentEvaluationCycle::STATUS_CLOSED]])
+                    ->count();
+
+                if ($activeDeptCount > 0) {
+                    return [
+                        'locked' => true,
+                        'cycle' => $activeCycle,
+                        'reason' => "รอบการประเมิน {$activeCycle->name_th} มีหน่วยงานเปิดรอบการประเมินแล้ว ระบบได้ล็อกโครงสร้างแบบประเมินส่วนกลางถาวรเพื่อรักษามาตรฐานและความเป็นธรรม",
+                    ];
+                }
+            }
+        }
+
+        // 3. Check if completed evaluations exist on this version
+        $targetVersion = $version ?: ($template->activeVersion ?: ($template->versions ? $template->versions[0] : null));
+        if ($targetVersion) {
+            $completedCount = Evaluation::find()
+                ->where(['template_version_id' => $targetVersion->id])
+                ->andWhere(['in', 'status', [Evaluation::STATUS_COMPLETED, Evaluation::STATUS_ACKNOWLEDGED]])
+                ->count();
+
+            if ($completedCount > 0) {
+                return [
+                    'locked' => true,
+                    'cycle' => $activeCycle,
+                    'reason' => "เวอร์ชันแบบประเมินนี้มีรายการประเมินที่เสร็จสิ้นสมบูรณ์แล้ว ({$completedCount} รายการ) ระบบได้ทำการล็อกโครงสร้างถาวรเพื่อความถูกต้องของประวัติการประเมิน",
+                ];
+            }
+        }
+
+        return ['locked' => false, 'reason' => ''];
+    }
+
     protected function assertCanEditTemplate(EvaluationTemplate $template)
     {
+        $lockInfo = self::isTemplateLocked($template);
+        if ($lockInfo['locked']) {
+            throw new ForbiddenHttpException($lockInfo['reason']);
+        }
+
         $adminCtx = $this->getAdminContext();
         if ($adminCtx['isSuperAdmin']) {
             return true;
@@ -119,16 +191,11 @@ class TemplateBuilderController extends Controller
         }
         $this->assertCanEditTemplate($template);
 
-        // Check if evaluations exist that are completed/finalized
-        $completedCount = \common\models\Evaluation::find()
-            ->where(['template_version_id' => $version->id])
-            ->andWhere(['in', 'status', [\common\models\Evaluation::STATUS_COMPLETED, \common\models\Evaluation::STATUS_ACKNOWLEDGED]])
-            ->count();
-
-        $adminCtx = $this->getAdminContext();
-        if ($completedCount > 0 && !$adminCtx['isSuperAdmin']) {
-            throw new ForbiddenHttpException("เวอร์ชันแบบประเมินนี้มีรายการประเมินที่เสร็จสิ้นสมบูรณ์แล้ว ({$completedCount} รายการ) ระบบได้ทำการล็อกโครงสร้างเพื่อความถูกต้องของประวัติการประเมิน");
+        $lockInfo = self::isTemplateLocked($template, $version);
+        if ($lockInfo['locked']) {
+            throw new ForbiddenHttpException($lockInfo['reason']);
         }
+
         return true;
     }
 
@@ -243,6 +310,10 @@ class TemplateBuilderController extends Controller
             ];
         }
 
+        $deptCycle = ($activeCycle && $targetDeptId)
+            ? DepartmentEvaluationCycle::getOrCreateRecord($activeCycle->id, $targetDeptId)
+            : null;
+
         return $this->render('index', [
             'adminCtx' => $adminCtx,
             'isSuperAdmin' => $isSuperAdmin,
@@ -252,6 +323,7 @@ class TemplateBuilderController extends Controller
             'activeCycle' => $activeCycle,
             'personnelTypes' => $personnelTypes,
             'templateMatrix' => $templateMatrix,
+            'deptCycle' => $deptCycle,
         ]);
     }
 
@@ -872,7 +944,15 @@ class TemplateBuilderController extends Controller
     public function actionBuilder($id)
     {
         $template = $this->findModel($id);
-        $this->assertCanEditTemplate($template);
+
+        $adminCtx = $this->getAdminContext();
+        if (!$adminCtx['isSuperAdmin'] && $template->department_id !== null) {
+            $scopedDeptIds = $adminCtx['departmentId'] ? Department::getAllScopedDeptIds($adminCtx['departmentId']) : [];
+            if (!in_array((int)$template->department_id, $scopedDeptIds, true)) {
+                throw new ForbiddenHttpException('คุณไม่มีสิทธิ์เข้าถึงแบบประเมินของหน่วยงานอื่น');
+            }
+        }
+
         $version = $template->activeVersion ?: ($template->versions ? $template->versions[0] : null);
 
         if (!$version) {
@@ -887,6 +967,10 @@ class TemplateBuilderController extends Controller
             ]);
             $version->save(false);
         }
+
+        $lockInfo = self::isTemplateLocked($template, $version);
+        $isLocked = $lockInfo['locked'];
+        $lockReason = $lockInfo['reason'];
 
         // Calculate total weight of sections
         $sections = EvaluationSection::find()
@@ -921,6 +1005,8 @@ class TemplateBuilderController extends Controller
             'perfWeight' => $perfWeight,
             'compWeight' => $compWeight,
             'departments' => $departments,
+            'isLocked' => $isLocked,
+            'lockReason' => $lockReason,
         ]);
     }
 

@@ -47,24 +47,29 @@ if (!Yii::$app->user->isGuest) {
         ];
     }
 
-    if ($isCentral || $isSuperAdmin) {
-        $systemItems = [];
-        if ($isSuperAdmin) {
-            $systemItems[] = [
-                'label' => '<i class="bi bi-shield-lock-fill me-1 text-primary"></i> จัดการผู้ดูแลระบบ (Admin Users)',
-                'url' => ['/user/index'],
-                'active' => $controllerId === 'user',
-            ];
-        }
-        $systemItems[] = [
+    $canManageCycle = Yii::$app->user->can('admin') || $isSuperAdmin || Yii::$app->user->can('central_hr') || $isCentral;
+
+    if ($isSuperAdmin) {
+        $items[] = [
+            'label' => '<i class="bi bi-gear-fill me-1"></i> จัดการระบบ',
+            'items' => [
+                [
+                    'label' => '<i class="bi bi-shield-lock-fill me-1 text-primary"></i> จัดการผู้ดูแลระบบ (Admin Users)',
+                    'url' => ['/user/index'],
+                    'active' => $controllerId === 'user',
+                ],
+                [
+                    'label' => '<i class="bi bi-calendar3 me-1"></i> รอบการประเมิน',
+                    'url' => ['/cycle/index'],
+                    'active' => $controllerId === 'cycle',
+                ],
+            ],
+        ];
+    } elseif ($canManageCycle) {
+        $items[] = [
             'label' => '<i class="bi bi-calendar3 me-1"></i> รอบการประเมิน',
             'url' => ['/cycle/index'],
             'active' => $controllerId === 'cycle',
-        ];
-
-        $items[] = [
-            'label' => '<i class="bi bi-gear-fill me-1"></i> จัดการระบบ',
-            'items' => $systemItems,
         ];
     }
 

@@ -5,16 +5,21 @@ namespace backend\controllers;
 use Yii;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
+use yii\web\ForbiddenHttpException;
 use yii\filters\AccessControl;
 use yii\filters\VerbFilter;
 use common\models\EvaluationCycle;
+use common\models\DepartmentEvaluationCycle;
 use common\models\CycleTemplateMapping;
 use common\models\PersonnelType;
 use common\models\EvaluationTemplate;
+use common\models\Department;
+use common\models\Personnel;
+use common\models\Evaluation;
 use common\models\AuditLog;
 
 /**
- * CycleController manages evaluation cycles and template mappings.
+ * CycleController manages evaluation cycles, department-level cycle activation, and template mappings.
  */
 class CycleController extends Controller
 {
@@ -36,6 +41,8 @@ class CycleController extends Controller
                     'delete' => ['post'],
                     'set-active' => ['post'],
                     'close' => ['post'],
+                    'department-open' => ['post'],
+                    'department-close' => ['post'],
                 ],
             ],
         ];
@@ -43,10 +50,142 @@ class CycleController extends Controller
 
     public function actionIndex()
     {
+        $isCentral = Department::isCentralAdmin();
+        $myDeptId = Department::getCurrentUserDeptId();
+        $myRootDeptId = DepartmentEvaluationCycle::getRootDeptId($myDeptId);
+        $myDepartment = $myRootDeptId ? Department::findOne($myRootDeptId) : null;
+
         $cycles = EvaluationCycle::find()->orderBy(['fiscal_year' => SORT_DESC, 'cycle_number' => SORT_DESC])->all();
+        $activeCycle = EvaluationCycle::find()
+            ->where(['status' => [EvaluationCycle::STATUS_ACTIVE, EvaluationCycle::STATUS_EVALUATION]])
+            ->orderBy(['id' => SORT_DESC])
+            ->one();
+
+        // Prepare department cycle status list for all root departments
+        $rootDepartments = Department::find()
+            ->where(['parent_id' => null, 'status' => 1])
+            ->orderBy(['sort_order' => SORT_ASC, 'name_th' => SORT_ASC])
+            ->all();
+
+        $deptStatuses = [];
+        if ($activeCycle) {
+            foreach ($rootDepartments as $rDept) {
+                $scopedIds = Department::getAllScopedDeptIds($rDept->id);
+                $pCount = Personnel::find()->where(['in', 'department_id', $scopedIds])->andWhere(['status' => 10])->count();
+                $evalCount = Evaluation::find()
+                    ->innerJoinWith('personnel')
+                    ->where(['{{%evaluations}}.evaluation_cycle_id' => $activeCycle->id])
+                    ->andWhere(['in', '{{%personnel}}.department_id', $scopedIds])
+                    ->andWhere(['in', '{{%evaluations}}.status', [Evaluation::STATUS_COMPLETED, Evaluation::STATUS_ACKNOWLEDGED]])
+                    ->count();
+
+                $totalEvals = Evaluation::find()
+                    ->innerJoinWith('personnel')
+                    ->where(['{{%evaluations}}.evaluation_cycle_id' => $activeCycle->id])
+                    ->andWhere(['in', '{{%personnel}}.department_id', $scopedIds])
+                    ->count();
+
+                $dCycle = DepartmentEvaluationCycle::getOrCreateRecord($activeCycle->id, $rDept->id);
+
+                // Auto-update to COMPLETED if active and 100% of staff completed
+                if ($dCycle->status === DepartmentEvaluationCycle::STATUS_ACTIVE && $pCount > 0 && $evalCount >= $pCount) {
+                    $dCycle->status = DepartmentEvaluationCycle::STATUS_COMPLETED;
+                    $dCycle->save(false);
+                }
+
+                $deptStatuses[$rDept->id] = [
+                    'department' => $rDept,
+                    'deptCycle' => $dCycle,
+                    'totalStaff' => (int)$pCount,
+                    'evalCount' => (int)$evalCount,
+                    'totalEvals' => (int)$totalEvals,
+                    'progressPct' => $pCount > 0 ? round(($evalCount / $pCount) * 100, 1) : ($totalEvals > 0 ? round(($evalCount / $totalEvals) * 100, 1) : 0),
+                ];
+            }
+        }
+
         return $this->render('index', [
+            'isCentral' => $isCentral,
+            'myDepartment' => $myDepartment,
+            'myRootDeptId' => $myRootDeptId,
             'cycles' => $cycles,
+            'activeCycle' => $activeCycle,
+            'rootDepartments' => $rootDepartments,
+            'deptStatuses' => $deptStatuses,
         ]);
+    }
+
+    /**
+     * Agency Admin or Central Admin opens evaluation cycle for a specific department.
+     * Freezes template structure for the department and allows personnel to begin self-assessments.
+     */
+    public function actionDepartmentOpen($cycle_id, $department_id = null)
+    {
+        $cycle = $this->findModel($cycle_id);
+        $isCentral = Department::isCentralAdmin();
+        $myDeptId = Department::getCurrentUserDeptId();
+
+        $targetDeptId = ($isCentral && $department_id) ? (int)$department_id : (int)$myDeptId;
+        if (!$targetDeptId) {
+            Yii::$app->session->setFlash('danger', 'ไม่พบข้อมูลหน่วยงาน');
+            return $this->redirect(['index']);
+        }
+
+        $rootDeptId = DepartmentEvaluationCycle::getRootDeptId($targetDeptId);
+        $targetDept = Department::findOne($rootDeptId);
+        if (!$targetDept) {
+            throw new NotFoundHttpException('ไม่พบหน่วยงาน');
+        }
+
+        if (!$isCentral) {
+            $scopedDeptIds = $myDeptId ? Department::getAllScopedDeptIds($myDeptId) : [];
+            if (!in_array($rootDeptId, $scopedDeptIds, true)) {
+                throw new ForbiddenHttpException('คุณไม่มีสิทธิ์จัดการรอบการประเมินของหน่วยงานอื่น');
+            }
+        }
+
+        DepartmentEvaluationCycle::openDepartmentCycle($cycle->id, $rootDeptId, Yii::$app->user->id);
+
+        Yii::$app->session->setFlash('success', "เปิดรอบการประเมินสำหรับ '{$targetDept->name_th}' เรียบร้อยแล้ว! ระบบได้ทำการล็อกโครงสร้างแบบประเมินถาวร และเปิดให้บุคลากรเข้าทำแบบประเมินตนเองแล้ว");
+
+        $returnUrl = Yii::$app->request->referrer ?: ['index'];
+        return $this->redirect($returnUrl);
+    }
+
+    /**
+     * Agency Admin or Central Admin closes evaluation cycle for a specific department.
+     */
+    public function actionDepartmentClose($cycle_id, $department_id = null)
+    {
+        $cycle = $this->findModel($cycle_id);
+        $isCentral = Department::isCentralAdmin();
+        $myDeptId = Department::getCurrentUserDeptId();
+
+        $targetDeptId = ($isCentral && $department_id) ? (int)$department_id : (int)$myDeptId;
+        if (!$targetDeptId) {
+            Yii::$app->session->setFlash('danger', 'ไม่พบข้อมูลหน่วยงาน');
+            return $this->redirect(['index']);
+        }
+
+        $rootDeptId = DepartmentEvaluationCycle::getRootDeptId($targetDeptId);
+        $targetDept = Department::findOne($rootDeptId);
+        if (!$targetDept) {
+            throw new NotFoundHttpException('ไม่พบหน่วยงาน');
+        }
+
+        if (!$isCentral) {
+            $scopedDeptIds = $myDeptId ? Department::getAllScopedDeptIds($myDeptId) : [];
+            if (!in_array($rootDeptId, $scopedDeptIds, true)) {
+                throw new ForbiddenHttpException('คุณไม่มีสิทธิ์จัดการรอบการประเมินของหน่วยงานอื่น');
+            }
+        }
+
+        DepartmentEvaluationCycle::closeDepartmentCycle($cycle->id, $rootDeptId, Yii::$app->user->id);
+
+        Yii::$app->session->setFlash('info', "ปิดรอบการประเมินสำหรับ '{$targetDept->name_th}' เรียบร้อยแล้ว");
+
+        $returnUrl = Yii::$app->request->referrer ?: ['index'];
+        return $this->redirect($returnUrl);
     }
 
     public function actionCreate()
@@ -79,6 +218,12 @@ class CycleController extends Controller
                         $m->created_at = time();
                         $m->save(false);
                     }
+                }
+
+                // Initialize department cycles as pending
+                $rootDepts = Department::find()->where(['parent_id' => null, 'status' => 1])->all();
+                foreach ($rootDepts as $rd) {
+                    DepartmentEvaluationCycle::getOrCreateRecord($model->id, $rd->id);
                 }
 
                 Yii::$app->session->setFlash('success', 'สร้างรอบการประเมินใหม่เรียบร้อยแล้ว');

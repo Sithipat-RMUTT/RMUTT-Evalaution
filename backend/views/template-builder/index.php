@@ -72,6 +72,82 @@ $deptName = $targetDepartment ? $targetDepartment->name_th : 'แบบฟอร
         <?php endif; ?>
     </div>
 
+    <?php
+    $deptCycle = $deptCycle ?? null;
+    $isDeptLocked = $deptCycle && in_array($deptCycle->status, [\common\models\DepartmentEvaluationCycle::STATUS_ACTIVE, \common\models\DepartmentEvaluationCycle::STATUS_COMPLETED, \common\models\DepartmentEvaluationCycle::STATUS_CLOSED], true);
+    ?>
+
+    <?php if ($targetDepartment && $deptCycle && $activeCycle): ?>
+        <?php if ($deptCycle->status === \common\models\DepartmentEvaluationCycle::STATUS_PENDING): ?>
+            <div class="alert alert-warning border-warning d-flex flex-wrap justify-content-between align-items-center p-3 mb-4 rounded-3 shadow-sm bg-warning-subtle">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-warning text-dark rounded-circle p-2 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;">
+                        <i class="bi bi-pencil-square fs-4"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold fs-6 text-dark mb-0.5">
+                            สถานะรอบประเมินของหน่วยงาน: <span class="badge bg-warning text-dark border border-warning">ยังไม่เปิดรอบ (อยู่ระหว่างเตรียมแบบฟอร์ม)</span>
+                        </div>
+                        <div class="small text-muted">
+                            ท่านสามารถปรับแต่งตัวชี้วัดด้านล่างให้สอดคล้องกับภาระงาน เมื่อพร้อมแล้ว ให้กดปุ่ม <strong>"ยืนยันและเปิดรอบการประเมิน"</strong> เพื่อล็อกเกณฑ์ถาวรและเปิดให้บุคลากรเริ่มประเมินตนเอง
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-2 mt-md-0">
+                    <?= Html::a('<i class="bi bi-play-circle-fill me-1"></i> ยืนยันและเปิดรอบการประเมิน', ['/cycle/department-open', 'cycle_id' => $activeCycle->id, 'department_id' => $targetDeptId], [
+                        'class' => 'btn btn-success fw-bold shadow-sm px-3',
+                        'data-method' => 'post',
+                        'data-confirm' => "⚠️ คำเตือนสำคัญ:\nเมื่อเปิดรอบการประเมินสำหรับ {$targetDepartment->name_th} แล้ว\nระบบจะทำการล็อกโครงสร้างแบบประเมินถาวร (ไม่อนุญาตให้แก้ไขอีกเพื่อความเป็นธรรมต่อผู้รับการประเมิน)\nและจะเปิดให้บุคลากรเข้าทำแบบประเมินตนเองได้ทันที\n\nท่านตรวจสอบความถูกต้องของแบบประเมินครบถ้วนแล้วและต้องการเปิดรอบการประเมินใช่หรือไม่?",
+                    ]) ?>
+                </div>
+            </div>
+        <?php elseif ($deptCycle->status === \common\models\DepartmentEvaluationCycle::STATUS_ACTIVE): ?>
+            <div class="alert alert-success border-success bg-success-subtle d-flex flex-wrap justify-content-between align-items-center p-3 mb-4 rounded-3 shadow-sm">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-success text-white rounded-circle p-2 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;">
+                        <i class="bi bi-shield-lock-fill fs-4"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold fs-6 text-success mb-0.5">
+                            สถานะรอบประเมินของหน่วยงาน: <span class="badge bg-success text-white"><i class="bi bi-lock-fill me-1"></i>เปิดรอบแล้ว (โครงสร้างแบบประเมินถูกล็อกถาวร)</span>
+                        </div>
+                        <div class="small text-dark">
+                            เปิดรอบเมื่อ: <strong><?= Yii::$app->formatter->asDatetime($deptCycle->opened_at, 'php:d/m/Y H:i') ?> น.</strong>
+                            <?= $deptCycle->opener ? ('โดย: ' . Html::encode($deptCycle->opener->displayName)) : '' ?>
+                            &bull; <span class="text-danger fw-semibold"><i class="bi bi-lock-fill"></i> แบบประเมินถูกล็อกการแก้ไข เพื่อความเป็นธรรมต่อผู้รับการประเมิน</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2 mt-2 mt-md-0">
+                    <?= Html::a('<i class="bi bi-speedometer2 me-1"></i> ดูความคืบหน้าการประเมิน', ['/monitor/index', 'dept_id' => $targetDeptId], ['class' => 'btn btn-sm btn-outline-success fw-semibold shadow-sm']) ?>
+                </div>
+            </div>
+        <?php elseif ($deptCycle->status === \common\models\DepartmentEvaluationCycle::STATUS_COMPLETED): ?>
+            <div class="alert alert-primary border-primary bg-primary-subtle d-flex flex-wrap justify-content-between align-items-center p-3 mb-4 rounded-3 shadow-sm">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-primary text-white rounded-circle p-2 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;">
+                        <i class="bi bi-check-circle-fill fs-4"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold fs-6 text-primary mb-0.5">
+                            สถานะรอบประเมินของหน่วยงาน: <span class="badge bg-primary text-white">ประเมินครบ 100% แล้ว</span>
+                        </div>
+                        <div class="small text-dark">
+                            บุคลากรทุกคนในหน่วยงานได้รับการประเมินและรับทราบผลครบถ้วนแล้ว พร้อมส่งข้อมูลสู่การพิจารณาส่วนกลาง
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-2 mt-md-0">
+                    <?= Html::a('<i class="bi bi-lock-fill me-1"></i> ปิดรอบการประเมินประจำหน่วยงาน', ['/cycle/department-close', 'cycle_id' => $activeCycle->id, 'department_id' => $targetDeptId], [
+                        'class' => 'btn btn-sm btn-secondary fw-bold shadow-sm',
+                        'data-method' => 'post',
+                        'data-confirm' => 'ยืนยันการปิดรอบการประเมินสำหรับหน่วยงานนี้?',
+                    ]) ?>
+                </div>
+            </div>
+        <?php endif; ?>
+    <?php endif; ?>
+
     <!-- Main Card: 4 Personnel Types Only -->
     <div class="card card-rmutt shadow-sm border-0">
         <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
@@ -176,35 +252,53 @@ $deptName = $targetDepartment ? $targetDepartment->name_th : 'แบบฟอร
                                 <div class="d-inline-flex align-items-center gap-2 flex-wrap justify-content-end">
                                     <?php if ($isCustom && $customTpl): ?>
                                         <!-- Case A: Department has customized template -->
-                                        <?= Html::a('<i class="bi bi-pencil-square me-1"></i>ปรับแต่งตัวชี้วัด (KPI)', ['/template-builder/builder', 'id' => $customTpl->id], [
-                                            'class' => 'btn btn-sm btn-primary fw-semibold shadow-sm',
-                                            'title' => 'ปรับแต่งตัวชี้วัด ค่าน้ำหนัก และเกณฑ์คะแนนตามภาระงานของหน่วยงาน',
-                                        ]) ?>
-
-                                        <?= Html::a('<i class="bi bi-eye"></i>', ['/template-builder/preview', 'id' => $customTpl->id], [
-                                            'class' => 'btn btn-sm btn-outline-secondary',
-                                            'title' => 'ดูตัวอย่างแบบฟอร์ม',
-                                            'target' => '_blank',
-                                        ]) ?>
-
-                                        <?= Html::a('<i class="bi bi-arrow-counterclockwise me-1"></i>คืนค่าเป็นแบบส่วนกลาง', ['/template-builder/reset-to-central', 'personnel_type_id' => $pt->id, 'department_id' => $targetDeptId], [
-                                            'class' => 'btn btn-sm btn-outline-danger',
-                                            'data-method' => 'post',
-                                            'data-confirm' => "ยืนยันการคืนค่าเป็นแบบฟอร์มมาตรฐานกลางของมหาวิทยาลัยสำหรับกลุ่ม '{$pt->name_th}'?\n\nการปรับแต่งตัวชี้วัดเฉพาะของหน่วยงานจะถูกยกเลิก และบุคลากรจะกลับไปใช้แบบประเมินมาตรฐานกลางทันที",
-                                            'title' => 'ยกเลิกการปรับแต่งเฉพาะหน่วยงานและกลับไปใช้แบบมาตรฐานกลาง',
-                                        ]) ?>
+                                        <?php if ($isDeptLocked): ?>
+                                            <?= Html::a('<i class="bi bi-eye me-1"></i>ดูโครงสร้าง (ล็อกแล้ว)', ['/template-builder/builder', 'id' => $customTpl->id], [
+                                                'class' => 'btn btn-sm btn-outline-secondary fw-semibold',
+                                                'title' => 'ดูโครงสร้างแบบประเมิน (ล็อกการแก้ไขเนื่องจากเปิดรอบแล้ว)',
+                                            ]) ?>
+                                            <?= Html::a('<i class="bi bi-file-earmark-text me-1"></i>Live Preview', ['/template-builder/preview', 'id' => $customTpl->id], [
+                                                'class' => 'btn btn-sm btn-outline-info text-dark shadow-sm',
+                                                'title' => 'ดูตัวอย่างแบบฟอร์มเสมือนจริง',
+                                                'target' => '_blank',
+                                            ]) ?>
+                                        <?php else: ?>
+                                            <?= Html::a('<i class="bi bi-pencil-square me-1"></i>ปรับแต่งตัวชี้วัด (KPI)', ['/template-builder/builder', 'id' => $customTpl->id], [
+                                                'class' => 'btn btn-sm btn-primary fw-semibold shadow-sm',
+                                                'title' => 'ปรับแต่งตัวชี้วัด ค่าน้ำหนัก และเกณฑ์คะแนนตามภาระงานของหน่วยงาน',
+                                            ]) ?>
+                                            <?= Html::a('<i class="bi bi-eye"></i>', ['/template-builder/preview', 'id' => $customTpl->id], [
+                                                'class' => 'btn btn-sm btn-outline-secondary',
+                                                'title' => 'ดูตัวอย่างแบบฟอร์ม',
+                                                'target' => '_blank',
+                                            ]) ?>
+                                            <?= Html::a('<i class="bi bi-arrow-counterclockwise me-1"></i>คืนค่าเป็นแบบส่วนกลาง', ['/template-builder/reset-to-central', 'personnel_type_id' => $pt->id, 'department_id' => $targetDeptId], [
+                                                'class' => 'btn btn-sm btn-outline-danger',
+                                                'data-method' => 'post',
+                                                'data-confirm' => "ยืนยันการคืนค่าเป็นแบบฟอร์มมาตรฐานกลางของมหาวิทยาลัยสำหรับกลุ่ม '{$pt->name_th}'?\n\nการปรับแต่งตัวชี้วัดเฉพาะของหน่วยงานจะถูกยกเลิก และบุคลากรจะกลับไปใช้แบบประเมินมาตรฐานกลางทันที",
+                                                'title' => 'ยกเลิกการปรับแต่งเฉพาะหน่วยงานและกลับไปใช้แบบมาตรฐานกลาง',
+                                            ]) ?>
+                                        <?php endif; ?>
                                     <?php elseif ($centralTpl): ?>
                                         <!-- Case B: Department is using central template -->
-                                        <?= Html::a('<i class="bi bi-sliders me-1"></i>นำแบบส่วนกลางมาปรับแต่งเกณฑ์ของหน่วยงาน', ['/template-builder/customize', 'personnel_type_id' => $pt->id, 'department_id' => $targetDeptId], [
-                                            'class' => 'btn btn-sm btn-primary fw-semibold shadow-sm',
-                                            'title' => 'คัดลอกแบบฟอร์มมาตรฐานกลางมาปรับแต่งตัวชี้วัดและเกณฑ์คะแนนเฉพาะหน่วยงานทันที',
-                                        ]) ?>
-
-                                        <?= Html::a('<i class="bi bi-eye me-1"></i>ดูฟอร์มกลาง', ['/template-builder/preview', 'id' => $centralTpl->id], [
-                                            'class' => 'btn btn-sm btn-outline-secondary',
-                                            'title' => 'ดูตัวอย่างแบบฟอร์มมาตรฐานกลาง',
-                                            'target' => '_blank',
-                                        ]) ?>
+                                        <?php if ($isDeptLocked): ?>
+                                            <span class="badge bg-light text-secondary border px-2 py-1.5"><i class="bi bi-lock-fill me-1"></i>ใช้แบบกลาง (ล็อกแล้ว)</span>
+                                            <?= Html::a('<i class="bi bi-eye me-1"></i>ดูฟอร์มกลาง', ['/template-builder/preview', 'id' => $centralTpl->id], [
+                                                'class' => 'btn btn-sm btn-outline-secondary',
+                                                'title' => 'ดูตัวอย่างแบบฟอร์มมาตรฐานกลาง',
+                                                'target' => '_blank',
+                                            ]) ?>
+                                        <?php else: ?>
+                                            <?= Html::a('<i class="bi bi-sliders me-1"></i>นำแบบส่วนกลางมาปรับแต่งเกณฑ์ของหน่วยงาน', ['/template-builder/customize', 'personnel_type_id' => $pt->id, 'department_id' => $targetDeptId], [
+                                                'class' => 'btn btn-sm btn-primary fw-semibold shadow-sm',
+                                                'title' => 'คัดลอกแบบฟอร์มมาตรฐานกลางมาปรับแต่งตัวชี้วัดและเกณฑ์คะแนนเฉพาะหน่วยงานทันที',
+                                            ]) ?>
+                                            <?= Html::a('<i class="bi bi-eye me-1"></i>ดูฟอร์มกลาง', ['/template-builder/preview', 'id' => $centralTpl->id], [
+                                                'class' => 'btn btn-sm btn-outline-secondary',
+                                                'title' => 'ดูตัวอย่างแบบฟอร์มมาตรฐานกลาง',
+                                                'target' => '_blank',
+                                            ]) ?>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 </div>
                             </td>

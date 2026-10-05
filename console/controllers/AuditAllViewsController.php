@@ -307,8 +307,17 @@ class AuditAllViewsController extends Controller
         // Backend Cycle Index & Form
         $cycCtrl = new \backend\controllers\CycleController('cycle', Yii::$app);
         try {
+            $cycles = EvaluationCycle::find()->all();
+            $actCycle = EvaluationCycle::findOne(['status' => EvaluationCycle::STATUS_ACTIVE]) ?: ($cycles[0] ?? null);
+            $rootDepts = Department::find()->where(['parent_id' => null])->all();
             $out = $cycCtrl->renderPartial('@backend/views/cycle/index', [
-                'cycles' => EvaluationCycle::find()->all(),
+                'cycles' => $cycles,
+                'activeCycle' => $actCycle,
+                'isCentral' => true,
+                'myDepartment' => null,
+                'myRootDeptId' => null,
+                'rootDepartments' => $rootDepts,
+                'deptStatuses' => [],
             ]);
             $this->stdout("   ✔ [Backend] cycle/index.php: OK\n", Console::FG_GREEN);
             $passed++;

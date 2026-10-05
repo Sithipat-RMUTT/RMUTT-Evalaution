@@ -10,7 +10,9 @@ use common\models\Evaluation;
 /** @var common\models\Evaluation[] $myEvaluations */
 /** @var common\models\Evaluation[] $teamEvaluations */
 /** @var bool $isSupervisor */
+/** @var bool|null $deptCyclePending */
 
+$deptCyclePending = $deptCyclePending ?? false;
 $this->title = 'ระบบประเมินผลการปฏิบัติงาน';
 ?>
 
@@ -81,12 +83,32 @@ $this->title = 'ระบบประเมินผลการปฏิบั�
         <!-- TAB 1: My Evaluations -->
         <div class="tab-pane fade show active" id="my-eval" role="tabpanel">
 
-            <?php if (empty($myEvaluations)): ?>
-                <div class="card card-rmutt text-center p-5">
-                    <i class="bi bi-journal-x text-muted display-3 mb-3"></i>
-                    <h5 class="text-muted">ยังไม่มีรายการประเมินในขณะนี้</h5>
-                    <p class="text-muted">เมื่อสำนักฯ เปิดรอบการประเมิน ระบบจะสร้างรายการประเมินให้ท่านโดยอัตโนมัติ</p>
+            <?php if ($deptCyclePending): ?>
+                <div class="card card-rmutt border-0 shadow-sm mb-4 border-start border-4 border-warning">
+                    <div class="card-body p-4 d-flex align-items-center gap-3">
+                        <div class="bg-warning-subtle text-warning-emphasis rounded-circle p-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 56px; height: 56px;">
+                            <i class="bi bi-hourglass-split fs-2"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold text-dark mb-1">
+                                หน่วยงาน <?= Html::encode($personnel->department ? $personnel->department->name_th : '') ?> กำลังจัดเตรียมแบบประเมิน
+                            </h5>
+                            <p class="text-muted mb-0">
+                                รอบการประเมินประจำหน่วยงานของท่านยังไม่เปิดใช้งานอย่างเป็นทางการ เนื่องจากผู้ดูแลหน่วยงานกำลังตรวจสอบและจัดเตรียมโครงสร้างแบบประเมินให้สมบูรณ์ เมื่อผู้ดูแลกดเปิดรอบแล้ว ท่านจะสามารถเริ่มทำแบบประเมินตนเองได้ทันที
+                            </p>
+                        </div>
+                    </div>
                 </div>
+            <?php endif; ?>
+
+            <?php if (empty($myEvaluations)): ?>
+                <?php if (!$deptCyclePending): ?>
+                    <div class="card card-rmutt text-center p-5">
+                        <i class="bi bi-journal-x text-muted display-3 mb-3"></i>
+                        <h5 class="text-muted">ยังไม่มีรายการประเมินในขณะนี้</h5>
+                        <p class="text-muted">เมื่อสำนักฯ เปิดรอบการประเมิน ระบบจะสร้างรายการประเมินให้ท่านโดยอัตโนมัติ</p>
+                    </div>
+                <?php endif; ?>
             <?php else: ?>
                 <div class="row">
                     <?php foreach ($myEvaluations as $eval): ?>
@@ -126,7 +148,13 @@ $this->title = 'ระบบประเมินผลการปฏิบั�
 
                                             <div class="btn-group">
                                                 <?php if (in_array($eval->status, [Evaluation::STATUS_DRAFT, Evaluation::STATUS_SELF_ASSESSMENT, Evaluation::STATUS_RETURNED])): ?>
-                                                    <?= Html::a('<i class="bi bi-pencil-square me-1"></i> กรอกแบบประเมินตนเอง', ['self-assess', 'id' => $eval->id], ['class' => 'btn btn-primary px-4 shadow-sm']) ?>
+                                                    <?php if ($deptCyclePending): ?>
+                                                        <button class="btn btn-secondary px-3" disabled title="หน่วยงานกำลังจัดเตรียมแบบประเมิน โปรดรอการเปิดรอบ">
+                                                            <i class="bi bi-lock-fill me-1"></i> รอหน่วยงานเปิดรอบ
+                                                        </button>
+                                                    <?php else: ?>
+                                                        <?= Html::a('<i class="bi bi-pencil-square me-1"></i> กรอกแบบประเมินตนเอง', ['self-assess', 'id' => $eval->id], ['class' => 'btn btn-primary px-4 shadow-sm']) ?>
+                                                    <?php endif; ?>
                                                 <?php elseif ($eval->status === Evaluation::STATUS_COMPLETED): ?>
                                                     <?= Html::a('<i class="bi bi-eye-fill me-1"></i> ดูผลการประเมิน', ['view', 'id' => $eval->id], ['class' => 'btn btn-outline-primary px-3']) ?>
                                                     <?= Html::a('<i class="bi bi-pen-fill me-1"></i> ลงนามรับทราบผล', ['acknowledge', 'id' => $eval->id], [
