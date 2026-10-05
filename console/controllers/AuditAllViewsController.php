@@ -324,7 +324,7 @@ class AuditAllViewsController extends Controller
         try {
             $cycles = EvaluationCycle::find()->all();
             $actCycle = EvaluationCycle::findOne(['status' => EvaluationCycle::STATUS_ACTIVE]) ?: ($cycles[0] ?? null);
-            $rootDepts = Department::find()->where(['parent_id' => null])->all();
+            // Test 1: Central Admin view
             $out = $cycCtrl->renderPartial('@backend/views/cycle/index', [
                 'cycles' => $cycles,
                 'activeCycle' => $actCycle,
@@ -333,8 +333,21 @@ class AuditAllViewsController extends Controller
                 'myRootDeptId' => null,
                 'rootDepartments' => $rootDepts,
                 'deptStatuses' => [],
+                'subDivisionStatuses' => [],
             ]);
-            $this->stdout("   ✔ [Backend] cycle/index.php: OK\n", Console::FG_GREEN);
+            // Test 2: Agency Admin view (e.g. ARIT)
+            $aritDept = Department::findOne(1);
+            $out = $cycCtrl->renderPartial('@backend/views/cycle/index', [
+                'cycles' => $cycles,
+                'activeCycle' => $actCycle,
+                'isCentral' => false,
+                'myDepartment' => $aritDept,
+                'myRootDeptId' => 1,
+                'rootDepartments' => [$aritDept],
+                'deptStatuses' => [],
+                'subDivisionStatuses' => [],
+            ]);
+            $this->stdout("   ✔ [Backend] cycle/index.php (Central & Agency views): OK\n", Console::FG_GREEN);
             $passed++;
         } catch (\Throwable $e) {
             $this->stdout("   ✖ [Backend] cycle/index.php ERROR: " . $e->getMessage() . "\n", Console::FG_RED, Console::BOLD);

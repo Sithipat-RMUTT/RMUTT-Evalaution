@@ -61,11 +61,11 @@ class CycleController extends Controller
             ->orderBy(['id' => SORT_DESC])
             ->one();
 
-        // Prepare department cycle status list for all root departments
-        $rootDepartments = Department::find()
-            ->where(['parent_id' => null, 'status' => 1])
-            ->orderBy(['sort_order' => SORT_ASC, 'name_th' => SORT_ASC])
-            ->all();
+        // 1. For Central Admin: query all root departments in the university
+        // 2. For Agency Admin: STRICTLY their own department only!
+        $rootDepartments = $isCentral
+            ? Department::find()->where(['parent_id' => null, 'status' => 1])->orderBy(['sort_order' => SORT_ASC, 'name_th' => SORT_ASC])->all()
+            : ($myDepartment ? [$myDepartment] : []);
 
         $deptStatuses = [];
         if ($activeCycle) {
@@ -104,6 +104,32 @@ class CycleController extends Controller
             }
         }
 
+        // Sub-divisions for Agency Admin (breakdown within their own agency, e.g. IT and Library under ARIT)
+        $subDivisionStatuses = [];
+        if (!$isCentral && $myDepartment && $activeCycle) {
+            $subDepts = Department::find()
+                ->where(['parent_id' => $myDepartment->id, 'status' => 1])
+                ->orderBy(['sort_order' => SORT_ASC, 'name_th' => SORT_ASC])
+                ->all();
+
+            foreach ($subDepts as $sDept) {
+                $subStaff = (int)Personnel::find()->where(['department_id' => $sDept->id, 'status' => 10])->count();
+                $subEvalDone = (int)Evaluation::find()
+                    ->innerJoinWith('personnel')
+                    ->where(['{{%evaluations}}.evaluation_cycle_id' => $activeCycle->id])
+                    ->andWhere(['{{%personnel}}.department_id' => $sDept->id])
+                    ->andWhere(['in', '{{%evaluations}}.status', [Evaluation::STATUS_COMPLETED, Evaluation::STATUS_ACKNOWLEDGED]])
+                    ->count();
+
+                $subDivisionStatuses[] = [
+                    'department' => $sDept,
+                    'staffCount' => $subStaff,
+                    'evalDone' => $subEvalDone,
+                    'progressPct' => $subStaff > 0 ? round(($subEvalDone / $subStaff) * 100, 1) : 0,
+                ];
+            }
+        }
+
         return $this->render('index', [
             'isCentral' => $isCentral,
             'myDepartment' => $myDepartment,
@@ -112,6 +138,7 @@ class CycleController extends Controller
             'activeCycle' => $activeCycle,
             'rootDepartments' => $rootDepartments,
             'deptStatuses' => $deptStatuses,
+            'subDivisionStatuses' => $subDivisionStatuses,
         ]);
     }
 

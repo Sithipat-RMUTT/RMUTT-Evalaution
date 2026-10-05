@@ -13,6 +13,7 @@ use common\models\DepartmentEvaluationCycle;
 /** @var common\models\EvaluationCycle|null $activeCycle */
 /** @var common\models\Department[] $rootDepartments */
 /** @var array $deptStatuses */
+/** @var array|null $subDivisionStatuses */
 
 $this->title = 'จัดการรอบการประเมินผลการปฏิบัติราชการ';
 
@@ -24,6 +25,7 @@ $cycles = $cycles ?? [];
 $activeCycle = $activeCycle ?? (EvaluationCycle::find()->where(['status' => [EvaluationCycle::STATUS_ACTIVE, EvaluationCycle::STATUS_EVALUATION]])->orderBy(['id' => SORT_DESC])->one());
 $rootDepartments = $rootDepartments ?? (\common\models\Department::find()->where(['parent_id' => null])->orderBy(['name_th' => SORT_ASC])->all());
 $deptStatuses = $deptStatuses ?? [];
+$subDivisionStatuses = $subDivisionStatuses ?? [];
 ?>
 
 <div class="cycle-index py-3">
@@ -133,8 +135,64 @@ $deptStatuses = $deptStatuses ?? [];
         </div>
     <?php endif; ?>
 
-    <!-- Real-time Department Cycle Status Monitor Table (Central Admin & Overview) -->
-    <?php if ($activeCycle && !empty($deptStatuses)): ?>
+    <!-- Agency Sub-Divisions Progress Breakdown (For Agency Admin) -->
+    <?php if (!$isCentral && !empty($subDivisionStatuses)): ?>
+        <div class="card card-rmutt shadow-sm mb-4 border-0">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-diagram-3-fill text-primary me-2"></i>ความคืบหน้าการประเมินแยกตามฝ่าย/งานภายในหน่วยงาน
+                    </h6>
+                    <small class="text-muted">
+                        การติดตามรายฝ่ายภายใต้ <?= Html::encode($myDepartment ? $myDepartment->name_th : '') ?>
+                    </small>
+                </div>
+                <span class="badge bg-light text-secondary border">ทั้งหมด <?= count($subDivisionStatuses) ?> ฝ่าย</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover table-admin align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th>ชื่อฝ่าย / งาน</th>
+                            <th class="text-center" style="width: 150px;">บุคลากรทั้งหมด</th>
+                            <th class="text-center" style="width: 150px;">ประเมินเสร็จสิ้น</th>
+                            <th style="width: 250px;">ความคืบหน้า</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($subDivisionStatuses as $sIdx => $sds): ?>
+                            <tr>
+                                <td><?= $sIdx + 1 ?></td>
+                                <td>
+                                    <strong class="text-dark"><?= Html::encode($sds['department']->name_th) ?></strong>
+                                    <small class="text-muted d-block"><?= Html::encode($sds['department']->code ?: '-') ?></small>
+                                </td>
+                                <td class="text-center">
+                                    <span class="fw-bold"><?= $sds['staffCount'] ?></span> คน
+                                </td>
+                                <td class="text-center">
+                                    <span class="fw-bold text-success"><?= $sds['evalDone'] ?></span> คน
+                                </td>
+                                <td>
+                                    <div class="d-flex justify-content-between align-items-center small mb-1">
+                                        <span class="fw-semibold text-muted"><?= $sds['evalDone'] ?> / <?= $sds['staffCount'] ?> คน</span>
+                                        <span class="fw-bold text-dark"><?= $sds['progressPct'] ?>%</span>
+                                    </div>
+                                    <div class="progress" style="height: 6px;">
+                                        <div class="progress-bar <?= $sds['progressPct'] >= 100 ? 'bg-success' : 'bg-primary' ?>" style="width: <?= min(100, $sds['progressPct']) ?>%"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <!-- Real-time Department Cycle Status Monitor Table (Central Admin Only) -->
+    <?php if ($isCentral && $activeCycle && !empty($deptStatuses)): ?>
         <div class="card card-rmutt shadow-sm mb-4 border-0">
             <div class="card-header bg-white py-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <div>

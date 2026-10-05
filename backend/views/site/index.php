@@ -192,7 +192,7 @@ $myDeptCycleRecord = $myDeptCycleRecord ?? null;
     </div>
 
     <!-- Section 1.5: Department Evaluation Cycle Activation Monitor (Central Governance) -->
-    <?php if (($isSuperAdmin || \common\models\Department::isCentralAdmin()) && !empty($deptCycleOverview['items'])): ?>
+    <?php if ($isSuperAdmin && !empty($deptCycleOverview['items'])): ?>
         <div class="card card-rmutt shadow-sm mb-4 border-top border-4 border-info">
             <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center py-3 gap-2">
                 <div>
@@ -486,8 +486,8 @@ $myDeptCycleRecord = $myDeptCycleRecord ?? null;
             <div class="card card-rmutt shadow-sm h-100">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
                     <div>
-                        <div class="fw-bold text-dark"><i class="bi bi-trophy-fill text-warning me-2"></i> การจัดอันดับผลสัมฤทธิ์เฉลี่ยรายหน่วยงาน (Cross-Department Benchmark)</div>
-                        <small class="text-muted">เปรียบเทียบคะแนนเฉลี่ยรวม (%) ระหว่างฝ่าย/หน่วยงาน</small>
+                        <div class="fw-bold text-dark"><i class="bi bi-trophy-fill text-warning me-2"></i> <?= $isSuperAdmin ? 'การจัดอันดับผลสัมฤทธิ์เฉลี่ยรายหน่วยงาน (Cross-Department Benchmark)' : 'การจัดอันดับผลสัมฤทธิ์เฉลี่ยรายฝ่ายภายในหน่วยงาน' ?></div>
+                        <small class="text-muted"><?= $isSuperAdmin ? 'เปรียบเทียบคะแนนเฉลี่ยรวม (%) ระหว่างฝ่าย/หน่วยงาน' : 'เปรียบเทียบคะแนนเฉลี่ยรวม (%) ระหว่างฝ่ายภายในหน่วยงาน' ?></small>
                     </div>
                     <span class="badge bg-light text-muted border">Performance Ranking</span>
                 </div>
@@ -508,8 +508,8 @@ $myDeptCycleRecord = $myDeptCycleRecord ?? null;
     <div class="card card-rmutt shadow-sm mb-4">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
             <div>
-                <h6 class="fw-bold text-primary mb-0"><i class="bi bi-diagram-3-fill me-2"></i> เมทริกซ์ผลสัมฤทธิ์และการจัดสรรโควตารายหน่วยงาน (Department Merit Matrix)</h6>
-                <small class="text-muted">ข้อมูลสนับสนุนการพิจารณาจัดสรรโควตาร้อยละเลื่อนเงินเดือนและการกลั่นกรองผลคะแนนระดับฝ่าย</small>
+                <h6 class="fw-bold text-primary mb-0"><i class="bi bi-diagram-3-fill me-2"></i> <?= $isSuperAdmin ? 'เมทริกซ์ผลสัมฤทธิ์และการจัดสรรโควตารายหน่วยงาน (Department Merit Matrix)' : 'เมทริกซ์ผลสัมฤทธิ์และการจัดสรรโควตาระดับฝ่ายภายในหน่วยงาน' ?></h6>
+                <small class="text-muted"><?= $isSuperAdmin ? 'ข้อมูลสนับสนุนการพิจารณาจัดสรรโควตาร้อยละเลื่อนเงินเดือนและการกลั่นกรองผลคะแนนระดับฝ่าย' : 'ข้อมูลสนับสนุนการพิจารณาจัดสรรโควตาร้อยละเลื่อนเงินเดือนของฝ่ายในหน่วยงาน' ?></small>
             </div>
             <?= Html::a('<i class="bi bi-file-earmark-excel me-1"></i> ส่งออกข้อมูลกลั่นกรอง', ['/report/export-csv', 'cycle_id' => $cycleId], ['class' => 'btn btn-sm btn-outline-secondary fw-semibold']) ?>
         </div>
