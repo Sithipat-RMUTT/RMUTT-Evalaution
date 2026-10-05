@@ -207,6 +207,20 @@ class PersonnelController extends Controller
                 }
             }
             if ($model->save()) {
+                // Sync any active draft/self_assessment evaluations to reflect updated L1/L2
+                Yii::$app->db->createCommand("
+                    UPDATE {{%evaluations}}
+                    SET evaluator_id = :sup,
+                        evaluator_l1_id = :sup,
+                        evaluator_l2_id = :div
+                    WHERE personnel_id = :pid
+                      AND status IN ('draft', 'self_assessment')
+                ", [
+                    ':sup' => $model->supervisor_id ?: $model->division_head_id,
+                    ':div' => $model->division_head_id,
+                    ':pid' => $model->id,
+                ])->execute();
+
                 AuditLog::log('update_personnel', 'Personnel', $model->id);
                 Yii::$app->session->setFlash('success', 'บันทึกการแก้ไขข้อมูลบุคลากรเรียบร้อยแล้ว');
                 return $this->redirect(['index']);

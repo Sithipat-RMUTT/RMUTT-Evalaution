@@ -185,8 +185,18 @@ $divisions = $divisions ?? [];
                                 </td>
                                 <td>
                                     <?php if ($p->supervisor): ?>
-                                        <span class="text-primary fw-medium"><i class="bi bi-person-check me-1"></i> <?= Html::encode($p->supervisor->fullName) ?></span>
-                                    <?php else: ?>
+                                        <div class="text-primary fw-medium small">
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle me-1">L1</span>
+                                            <?= Html::encode($p->supervisor->fullName) ?>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if ($p->divisionHead): ?>
+                                        <div class="text-info fw-medium small <?= $p->supervisor ? 'mt-1' : '' ?>">
+                                            <span class="badge bg-info-subtle text-info border border-info-subtle me-1">L2</span>
+                                            <?= Html::encode($p->divisionHead->fullName) ?>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if (!$p->supervisor && !$p->divisionHead): ?>
                                         <span class="text-muted">-</span>
                                     <?php endif; ?>
                                 </td>

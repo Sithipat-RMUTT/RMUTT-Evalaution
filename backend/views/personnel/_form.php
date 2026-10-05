@@ -29,10 +29,20 @@ $departments = ArrayHelper::map($deptModels, 'id', function($d) {
 
 $positions = ArrayHelper::map(Position::find()->all(), 'id', 'name_th');
 $supervisors = ArrayHelper::map(
-    Personnel::find()->where(['is_supervisor' => 1])->all(),
+    Personnel::find()
+        ->where(['status' => Personnel::STATUS_ACTIVE])
+        ->andWhere(['or', ['is_supervisor' => 1], ['in', 'position_level', ['section_head', 'division_head', 'director']]])
+        ->all(),
     'id',
-    fn($p) => $p->fullName . ' (' . $p->position->name_th . ')'
+    fn($p) => $p->fullName . ($p->position ? ' (' . $p->position->name_th . ')' : '')
 );
+if (empty($supervisors)) {
+    $supervisors = ArrayHelper::map(
+        Personnel::find()->all(),
+        'id',
+        fn($p) => $p->fullName . ($p->position ? ' (' . $p->position->name_th . ')' : '')
+    );
+}
 ?>
 
 <div class="personnel-form">
@@ -96,19 +106,35 @@ $supervisors = ArrayHelper::map(
                 ]) ?>
             </div>
 
+            <!-- Evaluators: L1 & L2 -->
             <div class="col-md-6">
                 <?= $form->field($model, 'supervisor_id')->dropDownList($supervisors, [
-                    'prompt' => '-- ไม่มี / เป็นผู้บริหารสูงสุด --',
+                    'prompt' => '-- ไม่มี / เป็นผู้บังคับบัญชาชั้นต้น --',
                     'class' => 'form-select select2-searchable',
-                ]) ?>
+                ])->label('<i class="bi bi-person-check me-1 text-primary"></i> หัวหน้างาน (ผู้ประเมินชั้นต้น L1)') ?>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-6">
+                <?= $form->field($model, 'division_head_id')->dropDownList($supervisors, [
+                    'prompt' => '-- ไม่มี / ประเมินระดับเดียว (L1 เท่านั้น) --',
+                    'class' => 'form-select select2-searchable',
+                ])->label('<i class="bi bi-person-check-fill me-1 text-info"></i> หัวหน้าฝ่าย (ผู้ประเมินชั้นที่ 2 L2)') ?>
+            </div>
+
+            <div class="col-md-4">
+                <?= $form->field($model, 'position_level')->dropDownList([
+                    'staff' => 'ผู้ปฏิบัติงานทั่วไป (Staff)',
+                    'section_head' => 'หัวหน้างาน / ผู้ประเมินชั้นต้น (L1)',
+                    'division_head' => 'หัวหน้าฝ่าย / ผู้ประเมินชั้นที่ 2 (L2)',
+                    'director' => 'ผู้อำนวยการ / ผู้บริหารสูงสุด (Director)',
+                ], ['class' => 'form-select'])->label('ระดับสายการบังคับบัญชา') ?>
+            </div>
+            <div class="col-md-4">
                 <?= $form->field($model, 'is_supervisor')->dropDownList([
                     0 => 'ไม่ใช่ผู้ประเมิน',
-                    1 => 'มีบทบาทเป็นผู้ประเมิน (หัวหน้างาน)',
+                    1 => 'มีบทบาทเป็นผู้ประเมิน (หัวหน้างาน/ฝ่าย)',
                 ]) ?>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <?= $form->field($model, 'status')->dropDownList([
                     10 => 'ปกติ (Active)',
                     0 => 'ระงับการใช้งาน (Inactive)',
