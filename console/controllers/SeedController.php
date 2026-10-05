@@ -461,7 +461,7 @@ class SeedController extends Controller
         $db->createCommand("UPDATE {{%personnel}} SET user_id = -(id + 1000) WHERE employee_code IN ($codeList)")->execute();
 
         foreach ($accounts as $acc) {
-            $user = User::findByUsername($acc['username']);
+            $user = User::findByUsername($acc['username']) ?: User::findOne(['email' => $acc['email']]);
             if (!$user) {
                 $user = new User();
                 $user->username = $acc['username'];

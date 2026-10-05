@@ -92,9 +92,20 @@ class User extends ActiveRecord implements IdentityInterface
     {
         $aliases = [
             'supervisor' => 'head1',
+            'head1' => 'supervisor',
             'head_div' => 'head2',
+            'head2' => 'head_div',
             'director' => 'head3',
+            'head3' => 'director',
             'superadmin' => 'admin',
+            'staff_civil' => 'staff1',
+            'staff1' => 'staff_civil',
+            'staff_univ' => 'staff2',
+            'staff2' => 'staff_univ',
+            'staff_govt' => 'staff3',
+            'staff3' => 'staff_govt',
+            'staff_special' => 'staff4',
+            'staff4' => 'staff_special',
         ];
         $lookup = $aliases[strtolower(trim($username))] ?? $username;
 
