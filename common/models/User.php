@@ -27,6 +27,7 @@ use yii\web\IdentityInterface;
  * @property int $updated_at
  * @property string $password write-only password
  *
+ * @property-read string $displayName
  * @property-read Department|null $department
  */
 class User extends ActiveRecord implements IdentityInterface
@@ -268,5 +269,21 @@ class User extends ActiveRecord implements IdentityInterface
     public function getDepartment()
     {
         return $this->hasOne(Department::class, ['id' => 'department_id']);
+    }
+
+    /**
+     * Get formatted display name for the user
+     *
+     * @return string
+     */
+    public function getDisplayName(): string
+    {
+        if (!empty($this->display_name)) {
+            return (string)$this->display_name;
+        }
+        if ($this->personnel && !empty($this->personnel->fullName)) {
+            return (string)$this->personnel->fullName;
+        }
+        return (string)$this->username;
     }
 }
