@@ -520,8 +520,12 @@ $recentEvaluations = $recentEvaluations ?? [];
                                             <small class="text-muted"><?= Html::encode($riskEval->personnel->department ? $riskEval->personnel->department->name_th : '-') ?></small>
                                         </td>
                                         <td class="text-center">
-                                            <div class="fw-bold text-danger"><?= number_format($riskEval->result->final_percentage, 2) ?>%</div>
-                                            <?= $riskEval->result->performanceBadge ?>
+                                            <?php if ($riskEval->result): ?>
+                                                <div class="fw-bold text-danger"><?= number_format($riskEval->result->final_percentage, 2) ?>%</div>
+                                                <?= $riskEval->result->performanceBadge ?>
+                                            <?php else: ?>
+                                                <span class="text-muted small">รอคำนวณ</span>
+                                            <?php endif; ?>
                                         </td>
                                         <td class="text-center">
                                             <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
@@ -586,11 +590,15 @@ $recentEvaluations = $recentEvaluations ?? [];
                                             <small class="text-muted"><?= Html::encode($topEval->personnel->department ? $topEval->personnel->department->name_th : '-') ?></small>
                                         </td>
                                         <td class="text-center">
-                                            <div class="fw-bold text-success"><?= number_format($topEval->result->final_percentage, 2) ?>%</div>
-                                            <?= $topEval->result->performanceBadge ?>
+                                            <?php if ($topEval->result): ?>
+                                                <div class="fw-bold text-success"><?= number_format($topEval->result->final_percentage, 2) ?>%</div>
+                                                <?= $topEval->result->performanceBadge ?>
+                                            <?php else: ?>
+                                                <span class="text-muted small">รอคำนวณ</span>
+                                            <?php endif; ?>
                                         </td>
                                         <td class="text-center">
-                                            <?php if ($topEval->result->final_percentage >= 95.0): ?>
+                                            <?php if ($topEval->result && $topEval->result->final_percentage >= 95.0): ?>
                                                 <span class="badge bg-success-subtle text-success border border-success-subtle">
                                                     <i class="bi bi-award-fill me-1"></i> เลื่อนขั้นพิเศษ / Talent
                                                 </span>
