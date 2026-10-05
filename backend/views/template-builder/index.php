@@ -94,11 +94,15 @@ $deptName = $targetDepartment ? $targetDepartment->name_th : 'แบบฟอร
                     </div>
                 </div>
                 <div class="mt-2 mt-md-0">
-                    <?= Html::a('<i class="bi bi-play-circle-fill me-1"></i> ยืนยันและเปิดรอบการประเมิน', ['/cycle/department-open', 'cycle_id' => $activeCycle->id, 'department_id' => $targetDeptId], [
-                        'class' => 'btn btn-success fw-bold shadow-sm px-3',
-                        'data-method' => 'post',
-                        'data-confirm' => "⚠️ คำเตือนสำคัญ:\nเมื่อเปิดรอบการประเมินสำหรับ {$targetDepartment->name_th} แล้ว\nระบบจะทำการล็อกโครงสร้างแบบประเมินถาวร (ไม่อนุญาตให้แก้ไขอีกเพื่อความเป็นธรรมต่อผู้รับการประเมิน)\nและจะเปิดให้บุคลากรเข้าทำแบบประเมินตนเองได้ทันที\n\nท่านตรวจสอบความถูกต้องของแบบประเมินครบถ้วนแล้วและต้องการเปิดรอบการประเมินใช่หรือไม่?",
-                    ]) ?>
+                    <?php if (!$isSuperAdmin): ?>
+                        <?= Html::a('<i class="bi bi-play-circle-fill me-1"></i> ยืนยันและเปิดรอบการประเมิน', ['/cycle/department-open', 'cycle_id' => $activeCycle->id, 'department_id' => $targetDeptId], [
+                            'class' => 'btn btn-success fw-bold shadow-sm px-3',
+                            'data-method' => 'post',
+                            'data-confirm' => "⚠️ คำเตือนสำคัญ:\nเมื่อเปิดรอบการประเมินสำหรับ {$targetDepartment->name_th} แล้ว\nระบบจะทำการล็อกโครงสร้างแบบประเมินถาวร (ไม่อนุญาตให้แก้ไขอีกเพื่อความเป็นธรรมต่อผู้รับการประเมิน)\nและจะเปิดให้บุคลากรเข้าทำแบบประเมินตนเองได้ทันที\n\nท่านตรวจสอบความถูกต้องของแบบประเมินครบถ้วนแล้วและต้องการเปิดรอบการประเมินใช่หรือไม่?",
+                        ]) ?>
+                    <?php else: ?>
+                        <span class="badge bg-secondary py-2 px-3 fs-7 text-white"><i class="bi bi-eye me-1"></i> รอผู้ดูแลหน่วยงานเป็นผู้เปิดรอบ (ส่วนกลางติดตามเท่านั้น)</span>
+                    <?php endif; ?>
                 </div>
             </div>
         <?php elseif ($deptCycle->status === \common\models\DepartmentEvaluationCycle::STATUS_ACTIVE): ?>
@@ -137,13 +141,15 @@ $deptName = $targetDepartment ? $targetDepartment->name_th : 'แบบฟอร
                         </div>
                     </div>
                 </div>
-                <div class="mt-2 mt-md-0">
-                    <?= Html::a('<i class="bi bi-lock-fill me-1"></i> ปิดรอบการประเมินประจำหน่วยงาน', ['/cycle/department-close', 'cycle_id' => $activeCycle->id, 'department_id' => $targetDeptId], [
-                        'class' => 'btn btn-sm btn-secondary fw-bold shadow-sm',
-                        'data-method' => 'post',
-                        'data-confirm' => 'ยืนยันการปิดรอบการประเมินสำหรับหน่วยงานนี้?',
-                    ]) ?>
-                </div>
+                <?php if (!$isSuperAdmin): ?>
+                    <div class="mt-2 mt-md-0">
+                        <?= Html::a('<i class="bi bi-lock-fill me-1"></i> ปิดรอบการประเมินประจำหน่วยงาน', ['/cycle/department-close', 'cycle_id' => $activeCycle->id, 'department_id' => $targetDeptId], [
+                            'class' => 'btn btn-sm btn-secondary fw-bold shadow-sm',
+                            'data-method' => 'post',
+                            'data-confirm' => 'ยืนยันการปิดรอบการประเมินสำหรับหน่วยงานนี้?',
+                        ]) ?>
+                    </div>
+                <?php endif; ?>
             </div>
         <?php endif; ?>
     <?php endif; ?>

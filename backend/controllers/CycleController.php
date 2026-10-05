@@ -143,7 +143,8 @@ class CycleController extends Controller
     }
 
     /**
-     * Agency Admin or Central Admin opens evaluation cycle for a specific department.
+     * Agency Admin opens evaluation cycle for a specific department.
+     * Central Admin is strictly forbidden (Monitor only).
      * Freezes template structure for the department and allows personnel to begin self-assessments.
      */
     public function actionDepartmentOpen($cycle_id, $department_id = null)
@@ -152,9 +153,13 @@ class CycleController extends Controller
         $isCentral = Department::isCentralAdmin();
         $myDeptId = Department::getCurrentUserDeptId();
 
-        $targetDeptId = ($isCentral && $department_id) ? (int)$department_id : (int)$myDeptId;
+        if ($isCentral) {
+            throw new ForbiddenHttpException('ผู้ดูแลส่วนกลาง (Central Admin / Superadmin) มีหน้าที่ติดตามผล (Monitor) เท่านั้น การเปิดรอบการประเมินจะต้องดำเนินการโดยผู้ดูแลของแต่ละหน่วยงานเอง (Agency Admin)');
+        }
+
+        $targetDeptId = (int)$myDeptId;
         if (!$targetDeptId) {
-            Yii::$app->session->setFlash('danger', 'ไม่พบข้อมูลหน่วยงาน');
+            Yii::$app->session->setFlash('danger', 'ไม่พบข้อมูลหน่วยงานประจำตัวผู้ดูแล');
             return $this->redirect(['index']);
         }
 
@@ -164,11 +169,9 @@ class CycleController extends Controller
             throw new NotFoundHttpException('ไม่พบหน่วยงาน');
         }
 
-        if (!$isCentral) {
-            $scopedDeptIds = $myDeptId ? Department::getAllScopedDeptIds($myDeptId) : [];
-            if (!in_array($rootDeptId, $scopedDeptIds, true)) {
-                throw new ForbiddenHttpException('คุณไม่มีสิทธิ์จัดการรอบการประเมินของหน่วยงานอื่น');
-            }
+        $scopedDeptIds = $myDeptId ? Department::getAllScopedDeptIds($myDeptId) : [];
+        if (!in_array($rootDeptId, $scopedDeptIds, true)) {
+            throw new ForbiddenHttpException('คุณไม่มีสิทธิ์จัดการรอบการประเมินของหน่วยงานอื่น');
         }
 
         DepartmentEvaluationCycle::openDepartmentCycle($cycle->id, $rootDeptId, Yii::$app->user->id);
@@ -180,7 +183,8 @@ class CycleController extends Controller
     }
 
     /**
-     * Agency Admin or Central Admin closes evaluation cycle for a specific department.
+     * Agency Admin closes evaluation cycle for a specific department.
+     * Central Admin is strictly forbidden (Monitor only).
      */
     public function actionDepartmentClose($cycle_id, $department_id = null)
     {
@@ -188,9 +192,13 @@ class CycleController extends Controller
         $isCentral = Department::isCentralAdmin();
         $myDeptId = Department::getCurrentUserDeptId();
 
-        $targetDeptId = ($isCentral && $department_id) ? (int)$department_id : (int)$myDeptId;
+        if ($isCentral) {
+            throw new ForbiddenHttpException('ผู้ดูแลส่วนกลาง (Central Admin / Superadmin) มีหน้าที่ติดตามผล (Monitor) เท่านั้น การปิดรอบการประเมินจะต้องดำเนินการโดยผู้ดูแลของแต่ละหน่วยงานเอง (Agency Admin)');
+        }
+
+        $targetDeptId = (int)$myDeptId;
         if (!$targetDeptId) {
-            Yii::$app->session->setFlash('danger', 'ไม่พบข้อมูลหน่วยงาน');
+            Yii::$app->session->setFlash('danger', 'ไม่พบข้อมูลหน่วยงานประจำตัวผู้ดูแล');
             return $this->redirect(['index']);
         }
 
@@ -200,11 +208,9 @@ class CycleController extends Controller
             throw new NotFoundHttpException('ไม่พบหน่วยงาน');
         }
 
-        if (!$isCentral) {
-            $scopedDeptIds = $myDeptId ? Department::getAllScopedDeptIds($myDeptId) : [];
-            if (!in_array($rootDeptId, $scopedDeptIds, true)) {
-                throw new ForbiddenHttpException('คุณไม่มีสิทธิ์จัดการรอบการประเมินของหน่วยงานอื่น');
-            }
+        $scopedDeptIds = $myDeptId ? Department::getAllScopedDeptIds($myDeptId) : [];
+        if (!in_array($rootDeptId, $scopedDeptIds, true)) {
+            throw new ForbiddenHttpException('คุณไม่มีสิทธิ์จัดการรอบการประเมินของหน่วยงานอื่น');
         }
 
         DepartmentEvaluationCycle::closeDepartmentCycle($cycle->id, $rootDeptId, Yii::$app->user->id);

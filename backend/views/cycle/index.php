@@ -236,7 +236,7 @@ $subDivisionStatuses = $subDivisionStatuses ?? [];
                             <th style="width: 200px;">วันเวลาที่เปิดรอบ / ผู้เปิด</th>
                             <th class="text-center" style="width: 120px;">บุคลากร</th>
                             <th style="width: 220px;">ความคืบหน้าการประเมิน</th>
-                            <th class="text-end pe-4" style="width: 180px;">การจัดการ</th>
+                            <th class="text-end pe-4" style="width: 200px;">ติดตาม/ตรวจสอบ</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -288,27 +288,8 @@ $subDivisionStatuses = $subDivisionStatuses ?? [];
                                 </td>
                                 <td class="text-end pe-4">
                                     <div class="d-inline-flex align-items-center gap-1.5">
-                                        <?= Html::a('<i class="bi bi-file-earmark-ruled" title="ดูแบบประเมิน"></i>', ['/template-builder/index', 'department_id' => $rDept->id], ['class' => 'btn btn-sm btn-outline-secondary', 'title' => 'ดูแบบประเมิน']) ?>
-                                        
-                                        <?php if ($isCentral || $myRootDeptId === $rDept->id): ?>
-                                            <?php if ($isRowPending): ?>
-                                                <?= Html::a('<i class="bi bi-play-circle-fill me-1"></i>เปิดรอบ', ['department-open', 'cycle_id' => $activeCycle->id, 'department_id' => $rDept->id], [
-                                                    'class' => 'btn btn-sm btn-success fw-semibold shadow-sm',
-                                                    'data-method' => 'post',
-                                                    'data-confirm' => "⚠️ ยืนยันการเปิดรอบการประเมินสำหรับ {$rDept->name_th}?\nระบบจะล็อกโครงสร้างแบบประเมินถาวรทันที และเปิดให้บุคลากรเข้าทำแบบประเมินตนเอง",
-                                                    'title' => 'เปิดรอบการประเมิน'
-                                                ]) ?>
-                                            <?php elseif ($isRowActive): ?>
-                                                <?= Html::a('<i class="bi bi-lock me-1"></i>ปิดรอบ', ['department-close', 'cycle_id' => $activeCycle->id, 'department_id' => $rDept->id], [
-                                                    'class' => 'btn btn-sm btn-outline-danger',
-                                                    'data-method' => 'post',
-                                                    'data-confirm' => "ยืนยันการปิดรอบการประเมินสำหรับ {$rDept->name_th}?",
-                                                    'title' => 'ปิดรอบประเมิน'
-                                                ]) ?>
-                                            <?php else: ?>
-                                                <?= Html::a('<i class="bi bi-eye"></i>', ['/monitor/index', 'dept_id' => $rDept->id], ['class' => 'btn btn-sm btn-outline-primary', 'title' => 'ดูผลประเมิน']) ?>
-                                            <?php endif; ?>
-                                        <?php endif; ?>
+                                        <?= Html::a('<i class="bi bi-file-earmark-ruled me-1"></i>ดูเกณฑ์', ['/template-builder/index', 'department_id' => $rDept->id], ['class' => 'btn btn-sm btn-outline-secondary', 'title' => 'ดูแบบประเมิน']) ?>
+                                        <?= Html::a('<i class="bi bi-speedometer2 me-1"></i>ติดตาม', ['/monitor/index', 'dept_id' => $rDept->id], ['class' => 'btn btn-sm btn-outline-primary', 'title' => 'ดูผลประเมิน']) ?>
                                     </div>
                                 </td>
                             </tr>
