@@ -119,10 +119,15 @@ class TemplateBuilderController extends Controller
         }
         $this->assertCanEditTemplate($template);
 
-        // Lock version if already referenced by any evaluations
-        $evalCount = \common\models\Evaluation::find()->where(['template_version_id' => $version->id])->count();
-        if ($evalCount > 0) {
-            throw new ForbiddenHttpException("เวอร์ชันแบบประเมินนี้ถูกนำไปใช้ประเมินแล้ว ({$evalCount} รายการ) ระบบได้ทำการล็อกโครงสร้างเพื่อความถูกต้องของประวัติการประเมิน");
+        // Check if evaluations exist that are completed/finalized
+        $completedCount = \common\models\Evaluation::find()
+            ->where(['template_version_id' => $version->id])
+            ->andWhere(['in', 'status', [\common\models\Evaluation::STATUS_COMPLETED, \common\models\Evaluation::STATUS_ACKNOWLEDGED]])
+            ->count();
+
+        $adminCtx = $this->getAdminContext();
+        if ($completedCount > 0 && !$adminCtx['isSuperAdmin']) {
+            throw new ForbiddenHttpException("เวอร์ชันแบบประเมินนี้มีรายการประเมินที่เสร็จสิ้นสมบูรณ์แล้ว ({$completedCount} รายการ) ระบบได้ทำการล็อกโครงสร้างเพื่อความถูกต้องของประวัติการประเมิน");
         }
         return true;
     }
