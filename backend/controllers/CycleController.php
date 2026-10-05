@@ -41,7 +41,6 @@ class CycleController extends Controller
                     'delete' => ['post'],
                     'set-active' => ['post'],
                     'close' => ['post'],
-                    'department-open' => ['post'],
                     'department-close' => ['post'],
                 ],
             ],
@@ -143,9 +142,9 @@ class CycleController extends Controller
     }
 
     /**
-     * Agency Admin opens evaluation cycle for a specific department.
+     * Agency Admin configures schedule, name, and opens evaluation cycle for their department.
+     * Renders a form similar to the master cycle form where dates and name can be specified.
      * Central Admin is strictly forbidden (Monitor only).
-     * Freezes template structure for the department and allows personnel to begin self-assessments.
      */
     public function actionDepartmentOpen($cycle_id, $department_id = null)
     {
@@ -174,12 +173,101 @@ class CycleController extends Controller
             throw new ForbiddenHttpException('คุณไม่มีสิทธิ์จัดการรอบการประเมินของหน่วยงานอื่น');
         }
 
-        DepartmentEvaluationCycle::openDepartmentCycle($cycle->id, $rootDeptId, Yii::$app->user->id);
+        $deptCycle = DepartmentEvaluationCycle::getOrCreateRecord($cycle->id, $rootDeptId);
 
-        Yii::$app->session->setFlash('success', "เปิดรอบการประเมินสำหรับ '{$targetDept->name_th}' เรียบร้อยแล้ว! ระบบได้ทำการล็อกโครงสร้างแบบประเมินถาวร และเปิดให้บุคลากรเข้าทำแบบประเมินตนเองแล้ว");
+        if ($deptCycle->status === DepartmentEvaluationCycle::STATUS_ACTIVE) {
+            Yii::$app->session->setFlash('info', "รอบการประเมินสำหรับ '{$targetDept->name_th}' เปิดใช้งานอยู่แล้ว ท่านสามารถปรับปรุงกำหนดการได้ที่หน้านี้");
+            return $this->redirect(['department-update', 'cycle_id' => $cycle->id]);
+        }
 
-        $returnUrl = Yii::$app->request->referrer ?: ['index'];
-        return $this->redirect($returnUrl);
+        // Pre-fill defaults from Master Cycle if empty
+        if (empty($deptCycle->name_th)) {
+            $deptCycle->name_th = "{$cycle->name_th} ({$targetDept->name_th})";
+        }
+        $deptCycle->period_start = $deptCycle->period_start ?: $cycle->period_start;
+        $deptCycle->period_end = $deptCycle->period_end ?: $cycle->period_end;
+        $deptCycle->self_assessment_start = $deptCycle->self_assessment_start ?: $cycle->self_assessment_start;
+        $deptCycle->self_assessment_end = $deptCycle->self_assessment_end ?: $cycle->self_assessment_end;
+        $deptCycle->supervisor_eval_start = $deptCycle->supervisor_eval_start ?: $cycle->supervisor_eval_start;
+        $deptCycle->supervisor_eval_end = $deptCycle->supervisor_eval_end ?: $cycle->supervisor_eval_end;
+
+        if (Yii::$app->request->isPost && $deptCycle->load(Yii::$app->request->post())) {
+            $deptCycle->status = DepartmentEvaluationCycle::STATUS_ACTIVE;
+            $deptCycle->opened_at = time();
+            $deptCycle->opened_by = Yii::$app->user->id;
+
+            if ($deptCycle->save()) {
+                AuditLog::log('open_department_evaluation_cycle', 'DepartmentEvaluationCycle', $deptCycle->id);
+                Yii::$app->session->setFlash('success', "เปิดรอบการประเมิน '{$deptCycle->getEffectiveName()}' เรียบร้อยแล้ว! ระบบได้ทำการล็อกโครงสร้างแบบประเมินถาวร และเปิดให้บุคลากรเข้าทำแบบประเมินตนเองตามกำหนดการแล้ว");
+                return $this->redirect(['index']);
+            }
+        }
+
+        // Format datetime-local fields for HTML input
+        foreach (['self_assessment_start', 'self_assessment_end', 'supervisor_eval_start', 'supervisor_eval_end'] as $field) {
+            if (!empty($deptCycle->$field)) {
+                $deptCycle->$field = date('Y-m-d\TH:i', strtotime((string)$deptCycle->$field));
+            }
+        }
+
+        return $this->render('department_open', [
+            'cycle' => $cycle,
+            'deptCycle' => $deptCycle,
+            'targetDept' => $targetDept,
+        ]);
+    }
+
+    /**
+     * Agency Admin updates schedule dates and notes for their department's active evaluation cycle.
+     */
+    public function actionDepartmentUpdate($cycle_id, $department_id = null)
+    {
+        $cycle = $this->findModel($cycle_id);
+        $isCentral = Department::isCentralAdmin();
+        $myDeptId = Department::getCurrentUserDeptId();
+
+        if ($isCentral) {
+            throw new ForbiddenHttpException('ผู้ดูแลส่วนกลาง (Central Admin / Superadmin) มีหน้าที่ติดตามผล (Monitor) เท่านั้น การแก้ไขกำหนดการจะต้องดำเนินการโดยผู้ดูแลของแต่ละหน่วยงานเอง (Agency Admin)');
+        }
+
+        $targetDeptId = (int)$myDeptId;
+        if (!$targetDeptId) {
+            Yii::$app->session->setFlash('danger', 'ไม่พบข้อมูลหน่วยงานประจำตัวผู้ดูแล');
+            return $this->redirect(['index']);
+        }
+
+        $rootDeptId = DepartmentEvaluationCycle::getRootDeptId($targetDeptId);
+        $targetDept = Department::findOne($rootDeptId);
+        if (!$targetDept) {
+            throw new NotFoundHttpException('ไม่พบหน่วยงาน');
+        }
+
+        $scopedDeptIds = $myDeptId ? Department::getAllScopedDeptIds($myDeptId) : [];
+        if (!in_array($rootDeptId, $scopedDeptIds, true)) {
+            throw new ForbiddenHttpException('คุณไม่มีสิทธิ์จัดการรอบการประเมินของหน่วยงานอื่น');
+        }
+
+        $deptCycle = DepartmentEvaluationCycle::getOrCreateRecord($cycle->id, $rootDeptId);
+
+        if (Yii::$app->request->isPost && $deptCycle->load(Yii::$app->request->post())) {
+            if ($deptCycle->save()) {
+                AuditLog::log('update_department_evaluation_cycle', 'DepartmentEvaluationCycle', $deptCycle->id);
+                Yii::$app->session->setFlash('success', "แก้ไขกำหนดการรอบการประเมินสำหรับ '{$targetDept->name_th}' เรียบร้อยแล้ว");
+                return $this->redirect(['index']);
+            }
+        }
+
+        foreach (['self_assessment_start', 'self_assessment_end', 'supervisor_eval_start', 'supervisor_eval_end'] as $field) {
+            if (!empty($deptCycle->$field)) {
+                $deptCycle->$field = date('Y-m-d\TH:i', strtotime((string)$deptCycle->$field));
+            }
+        }
+
+        return $this->render('department_update', [
+            'cycle' => $cycle,
+            'deptCycle' => $deptCycle,
+            'targetDept' => $targetDept,
+        ]);
     }
 
     /**

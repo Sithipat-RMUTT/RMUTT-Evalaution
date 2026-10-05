@@ -37,13 +37,17 @@ $this->title = 'ระบบประเมินผลการปฏิบั�
                 </div>
             </div>
             <div class="col-12 col-lg-5 col-xl-4 text-lg-end">
-                <?php if ($activeCycle): ?>
+                <?php if ($activeCycle): 
+                    $deptCycleRec = $personnel ? $activeCycle->getDepartmentCycleForPersonnel($personnel) : null;
+                    $effectiveCycleName = $deptCycleRec ? $deptCycleRec->getEffectiveName() : $activeCycle->name_th;
+                    $effectiveEnd = $deptCycleRec ? $deptCycleRec->getEffectiveSelfAssessmentEnd() : $activeCycle->self_assessment_end;
+                ?>
                     <div class="eval-cycle-box bg-white text-dark rounded-3 p-2 px-3 text-start d-inline-block shadow-sm">
                         <div class="fw-bold text-primary mb-1" style="font-size: 0.88rem; line-height: 1.35;">
-                            <i class="bi bi-clock-history me-1 text-primary"></i> <?= Html::encode($activeCycle->name_th) ?>
+                            <i class="bi bi-clock-history me-1 text-primary"></i> <?= Html::encode($effectiveCycleName) ?>
                         </div>
                         <div class="text-muted" style="font-size: 0.8rem;">
-                            <i class="bi bi-calendar-event me-1 text-secondary"></i> สิ้นสุดประเมินตนเอง: <?= Yii::$app->formatter->asDate($activeCycle->self_assessment_end, 'php:d M Y H:i น.') ?>
+                            <i class="bi bi-calendar-event me-1 text-secondary"></i> สิ้นสุดประเมินตนเอง: <?= Yii::$app->formatter->asDate($effectiveEnd, 'php:d M Y H:i น.') ?>
                         </div>
                     </div>
                 <?php else: ?>

@@ -81,17 +81,32 @@ $subDivisionStatuses = $subDivisionStatuses ?? [];
                                 <h6 class="fw-bold text-dark mb-1"><i class="bi bi-info-circle-fill text-warning me-1"></i> รอบการประเมินของหน่วยงานยังไม่เปิด</h6>
                                 <p class="small text-muted mb-0">
                                     ท่านสามารถเข้าไปตรวจสอบหรือปรับแต่งเกณฑ์ตัวชี้วัด (KPI) ในเมนู <strong>"จัดการแบบประเมิน"</strong> ให้เรียบร้อย 
-                                    เมื่อพร้อมแล้ว ให้กดปุ่ม <strong>"เปิดรอบการประเมิน"</strong> ด้านขวา เพื่อล็อกแบบประเมินและให้บุคลากรเริ่มประเมินตนเอง
+                                    เมื่อพร้อมแล้ว ให้กดปุ่ม <strong>"กำหนดวันเวลาและเปิดรอบการประเมิน"</strong> ด้านขวา เพื่อตั้งชื่อรอบ กำหนดช่วงเวลาประเมินตนเองและหัวหน้าประเมินสำหรับหน่วยงานของท่าน
                                 </p>
                             </div>
                         <?php elseif ($isActive): ?>
                             <div class="p-3 bg-success-subtle rounded-3 border border-success mb-3">
-                                <h6 class="fw-bold text-success mb-1"><i class="bi bi-shield-lock-fill me-1"></i> เปิดรอบแล้ว - โครงสร้างแบบประเมินถูกล็อกถาวร</h6>
-                                <p class="small text-dark mb-0">
-                                    เปิดรอบเมื่อ: <strong><?= Yii::$app->formatter->asDatetime($dCycle->opened_at, 'php:d/m/Y H:i') ?> น.</strong>
-                                    <?= $dCycle->opener ? ('โดย: ' . Html::encode($dCycle->opener->displayName)) : '' ?>
-                                    <br><span class="text-danger fw-semibold"><i class="bi bi-lock-fill"></i> แบบประเมินถูกล็อกการแก้ไข เพื่อความเป็นธรรมต่อผู้รับการประเมิน</span>
-                                </p>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <h6 class="fw-bold text-success mb-0"><i class="bi bi-shield-lock-fill me-1"></i> เปิดรอบแล้ว - กำลังดำเนินการประเมิน</h6>
+                                    <span class="badge bg-success text-white">โครงสร้างแบบประเมินถูกล็อกถาวร</span>
+                                </div>
+                                <div class="small text-dark mt-2">
+                                    <div><strong>ชื่อรอบของหน่วยงาน:</strong> <?= Html::encode($dCycle->effectiveName) ?></div>
+                                    <div class="mt-1">
+                                        <i class="bi bi-person-fill text-primary me-1"></i><strong>ช่วงประเมินตนเอง:</strong> 
+                                        <?= $dCycle->effectiveSelfAssessmentStart ? Yii::$app->formatter->asDatetime($dCycle->effectiveSelfAssessmentStart, 'php:d/m/Y H:i') : '-' ?> - 
+                                        <span class="text-danger fw-bold"><?= $dCycle->effectiveSelfAssessmentEnd ? Yii::$app->formatter->asDatetime($dCycle->effectiveSelfAssessmentEnd, 'php:d/m/Y H:i') : '-' ?> น.</span>
+                                    </div>
+                                    <div class="mt-0.5">
+                                        <i class="bi bi-person-check-fill text-success me-1"></i><strong>ช่วงหัวหน้าประเมิน:</strong> 
+                                        <?= $dCycle->effectiveSupervisorEvalStart ? Yii::$app->formatter->asDatetime($dCycle->effectiveSupervisorEvalStart, 'php:d/m/Y H:i') : '-' ?> - 
+                                        <span class="text-danger fw-bold"><?= $dCycle->effectiveSupervisorEvalEnd ? Yii::$app->formatter->asDatetime($dCycle->effectiveSupervisorEvalEnd, 'php:d/m/Y H:i') : '-' ?> น.</span>
+                                    </div>
+                                    <div class="text-muted mt-1 small">
+                                        เปิดรอบเมื่อ: <?= Yii::$app->formatter->asDatetime($dCycle->opened_at, 'php:d/m/Y H:i') ?> น.
+                                        <?= $dCycle->opener ? ('โดย: ' . Html::encode($dCycle->opener->displayName)) : '' ?>
+                                    </div>
+                                </div>
                             </div>
                         <?php elseif ($isCompleted): ?>
                             <div class="p-3 bg-primary-subtle rounded-3 border border-primary mb-3">
@@ -114,19 +129,24 @@ $subDivisionStatuses = $subDivisionStatuses ?? [];
                         <div class="d-flex flex-column flex-sm-row justify-content-md-end gap-2">
                             <?= Html::a('<i class="bi bi-file-earmark-ruled me-1"></i> ดูเกณฑ์แบบประเมิน', ['/template-builder/index'], ['class' => 'btn btn-outline-secondary']) ?>
                             <?php if ($isPending): ?>
-                                <?= Html::a('<i class="bi bi-play-circle-fill me-1"></i> เปิดรอบการประเมินของหน่วยงาน', ['department-open', 'cycle_id' => $activeCycle->id, 'department_id' => $myDepartment->id], [
+                                <?= Html::a('<i class="bi bi-calendar-plus-fill me-1"></i> กำหนดวันเวลาและเปิดรอบการประเมิน', ['department-open', 'cycle_id' => $activeCycle->id], [
                                     'class' => 'btn btn-success fw-bold shadow-sm px-3',
-                                    'data-method' => 'post',
-                                    'data-confirm' => "⚠️ คำเตือนสำคัญ:\nเมื่อเปิดรอบการประเมินสำหรับ {$myDepartment->name_th} แล้ว\nระบบจะทำการล็อกโครงสร้างแบบประเมินถาวร (ไม่อนุญาตให้แก้ไขอีกเพื่อความเป็นธรรมต่อผู้รับการประเมิน)\nและจะเปิดให้บุคลากรเข้าทำแบบประเมินตนเองได้ทันที\n\nท่านตรวจสอบความถูกต้องของแบบประเมินครบถ้วนแล้วและต้องการเปิดรอบการประเมินใช่หรือไม่?",
+                                    'title' => 'ตั้งชื่อรอบ กำหนดช่วงเวลาประเมินตนเองและหัวหน้าประเมินสำหรับหน่วยงาน',
                                 ]) ?>
-                            <?php elseif ($isActive && $myStatus['progressPct'] >= 100): ?>
-                                <?= Html::a('<i class="bi bi-lock-fill me-1"></i> ปิดรอบการประเมินประจำหน่วยงาน', ['department-close', 'cycle_id' => $activeCycle->id, 'department_id' => $myDepartment->id], [
-                                    'class' => 'btn btn-primary fw-bold shadow-sm',
-                                    'data-method' => 'post',
-                                    'data-confirm' => 'ยืนยันการปิดรอบการประเมินสำหรับหน่วยงานนี้?',
+                            <?php elseif ($isActive): ?>
+                                <?= Html::a('<i class="bi bi-pencil-square me-1"></i> แก้ไขกำหนดการรอบประเมิน', ['department-update', 'cycle_id' => $activeCycle->id], [
+                                    'class' => 'btn btn-outline-primary fw-semibold shadow-sm',
+                                    'title' => 'ปรับปรุงวันเวลาประเมินตนเอง หรือขยายเวลา',
                                 ]) ?>
-                            <?php else: ?>
-                                <?= Html::a('<i class="bi bi-speedometer2 me-1"></i> ตรวจสอบการประเมิน', ['/monitor/index', 'dept_id' => $myDepartment->id], ['class' => 'btn btn-outline-primary']) ?>
+                                <?php if ($myStatus['progressPct'] >= 100): ?>
+                                    <?= Html::a('<i class="bi bi-lock-fill me-1"></i> ปิดรอบการประเมินประจำหน่วยงาน', ['department-close', 'cycle_id' => $activeCycle->id], [
+                                        'class' => 'btn btn-primary fw-bold shadow-sm',
+                                        'data-method' => 'post',
+                                        'data-confirm' => 'ยืนยันการปิดรอบการประเมินสำหรับหน่วยงานนี้?',
+                                    ]) ?>
+                                <?php else: ?>
+                                    <?= Html::a('<i class="bi bi-speedometer2 me-1"></i> ตรวจสอบการประเมิน', ['/monitor/index', 'dept_id' => $myDepartment->id], ['class' => 'btn btn-outline-secondary']) ?>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -233,10 +253,11 @@ $subDivisionStatuses = $subDivisionStatuses ?? [];
                             <th style="width: 50px;" class="text-center">#</th>
                             <th>หน่วยงาน / สังกัด</th>
                             <th class="text-center" style="width: 170px;">สถานะรอบประเมิน</th>
-                            <th style="width: 200px;">วันเวลาที่เปิดรอบ / ผู้เปิด</th>
-                            <th class="text-center" style="width: 120px;">บุคลากร</th>
-                            <th style="width: 220px;">ความคืบหน้าการประเมิน</th>
-                            <th class="text-end pe-4" style="width: 200px;">ติดตาม/ตรวจสอบ</th>
+                            <th style="width: 240px;">กำหนดการประเมิน (ตนเอง / หัวหน้า)</th>
+                            <th style="width: 180px;">วันเวลาที่เปิดรอบ / ผู้เปิด</th>
+                            <th class="text-center" style="width: 100px;">บุคลากร</th>
+                            <th style="width: 200px;">ความคืบหน้าการประเมิน</th>
+                            <th class="text-end pe-4" style="width: 180px;">ติดตาม/ตรวจสอบ</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -256,10 +277,29 @@ $subDivisionStatuses = $subDivisionStatuses ?? [];
                                             <span class="badge bg-primary ms-1">หน่วยงานของคุณ</span>
                                         <?php endif; ?>
                                     </strong>
+                                    <?php if (!empty($dCycle->name_th)): ?>
+                                        <small class="text-primary d-block fw-semibold"><?= Html::encode($dCycle->name_th) ?></small>
+                                    <?php endif; ?>
                                     <small class="text-muted">รหัส: <code><?= Html::encode($rDept->code ?: '-') ?></code></small>
                                 </td>
                                 <td class="text-center">
                                     <?= $dCycle->statusBadge ?>
+                                </td>
+                                <td class="small">
+                                    <?php if ($dCycle->status !== DepartmentEvaluationCycle::STATUS_PENDING): ?>
+                                        <div class="mb-1">
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle me-1">ตนเอง</span>
+                                            <?= $dCycle->effectiveSelfAssessmentStart ? Yii::$app->formatter->asDate($dCycle->effectiveSelfAssessmentStart, 'php:d/m/y') : '-' ?> - 
+                                            <strong class="text-danger"><?= $dCycle->effectiveSelfAssessmentEnd ? Yii::$app->formatter->asDate($dCycle->effectiveSelfAssessmentEnd, 'php:d/m/y') : '-' ?></strong>
+                                        </div>
+                                        <div>
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle me-1">หัวหน้า</span>
+                                            <?= $dCycle->effectiveSupervisorEvalStart ? Yii::$app->formatter->asDate($dCycle->effectiveSupervisorEvalStart, 'php:d/m/y') : '-' ?> - 
+                                            <strong class="text-danger"><?= $dCycle->effectiveSupervisorEvalEnd ? Yii::$app->formatter->asDate($dCycle->effectiveSupervisorEvalEnd, 'php:d/m/y') : '-' ?></strong>
+                                        </div>
+                                    <?php else: ?>
+                                        <span class="text-muted italic"><i class="bi bi-clock me-1"></i>รอหน่วยงานเปิดและกำหนด</span>
+                                    <?php endif; ?>
                                 </td>
                                 <td class="small">
                                     <?php if ($dCycle->opened_at): ?>

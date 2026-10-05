@@ -296,7 +296,7 @@ $myDeptCycleRecord = $myDeptCycleRecord ?? null;
                 </div>
                 <div class="d-flex gap-2">
                     <?= Html::a('<i class="bi bi-file-earmark-ruled me-1"></i> ตรวจสอบแบบประเมิน', ['/template-builder/index'], ['class' => 'btn btn-outline-dark fw-semibold']) ?>
-                    <?= Html::a('<i class="bi bi-play-circle-fill me-1"></i> ไปหน้าเปิดรอบการประเมิน', ['/cycle/index'], ['class' => 'btn btn-warning text-dark fw-bold shadow-sm']) ?>
+                    <?= Html::a('<i class="bi bi-calendar-plus-fill me-1"></i> กำหนดวันเวลาและเปิดรอบการประเมิน', ['/cycle/department-open', 'cycle_id' => $selectedCycle ? $selectedCycle->id : null], ['class' => 'btn btn-warning text-dark fw-bold shadow-sm']) ?>
                 </div>
             </div>
         <?php else: ?>
@@ -314,7 +314,10 @@ $myDeptCycleRecord = $myDeptCycleRecord ?? null;
                         </div>
                     </div>
                 </div>
-                <?= Html::a('<i class="bi bi-calendar-check me-1"></i> ดูสถานะรอบประเมิน', ['/cycle/index'], ['class' => 'btn btn-success fw-semibold shadow-sm']) ?>
+                <div class="d-flex gap-2">
+                    <?= Html::a('<i class="bi bi-pencil-square me-1"></i> แก้ไขกำหนดการรอบ', ['/cycle/department-update', 'cycle_id' => $selectedCycle ? $selectedCycle->id : null], ['class' => 'btn btn-outline-success fw-semibold shadow-sm']) ?>
+                    <?= Html::a('<i class="bi bi-calendar-check me-1"></i> ดูสถานะรอบประเมิน', ['/cycle/index'], ['class' => 'btn btn-success fw-semibold shadow-sm']) ?>
+                </div>
             </div>
         <?php endif; ?>
     <?php endif; ?>

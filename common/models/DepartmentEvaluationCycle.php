@@ -14,6 +14,13 @@ use yii\behaviors\TimestampBehavior;
  * @property int $id
  * @property int $evaluation_cycle_id
  * @property int $department_id
+ * @property string|null $name_th
+ * @property string|null $period_start
+ * @property string|null $period_end
+ * @property string|null $self_assessment_start
+ * @property string|null $self_assessment_end
+ * @property string|null $supervisor_eval_start
+ * @property string|null $supervisor_eval_end
  * @property string $status 'pending', 'active', 'completed', 'closed'
  * @property int|null $opened_at
  * @property int|null $opened_by
@@ -54,6 +61,12 @@ class DepartmentEvaluationCycle extends ActiveRecord
             [['evaluation_cycle_id', 'department_id', 'opened_at', 'opened_by', 'closed_at', 'closed_by'], 'integer'],
             [['status'], 'string', 'max' => 30],
             [['status'], 'default', 'value' => self::STATUS_PENDING],
+            [['name_th'], 'string', 'max' => 255],
+            [['name_th'], 'trim'],
+            [['period_start', 'period_end', 'self_assessment_start', 'self_assessment_end', 'supervisor_eval_start', 'supervisor_eval_end'], 'safe'],
+            [['period_end'], 'validateDateOrder', 'params' => ['compareWith' => 'period_start', 'label' => 'วันสิ้นสุดรอบประเมินต้องไม่ก่อนวันเริ่มต้นรอบ']],
+            [['self_assessment_end'], 'validateDateOrder', 'params' => ['compareWith' => 'self_assessment_start', 'label' => 'วันสิ้นสุดการประเมินตนเองต้องอยู่หลังวันเริ่มต้นประเมินตนเอง']],
+            [['supervisor_eval_end'], 'validateDateOrder', 'params' => ['compareWith' => 'supervisor_eval_start', 'label' => 'วันสิ้นสุดการประเมินโดยหัวหน้าต้องอยู่หลังวันเริ่มต้นการประเมินโดยหัวหน้า']],
             [['notes'], 'string'],
             [['evaluation_cycle_id', 'department_id'], 'unique', 'targetAttribute' => ['evaluation_cycle_id', 'department_id']],
             [['evaluation_cycle_id'], 'exist', 'skipOnError' => true, 'targetClass' => EvaluationCycle::class, 'targetAttribute' => ['evaluation_cycle_id' => 'id']],
@@ -63,21 +76,65 @@ class DepartmentEvaluationCycle extends ActiveRecord
         ];
     }
 
+    public function validateDateOrder($attribute, $params)
+    {
+        if ($this->hasErrors($attribute)) {
+            return;
+        }
+
+        $compareWith = $params['compareWith'];
+        $label = $params['label'] ?? 'ช่วงเวลาไม่ถูกต้อง';
+
+        if (!empty($this->$attribute) && !empty($this->$compareWith)) {
+            $current = strtotime((string)$this->$attribute);
+            $compare = strtotime((string)$this->$compareWith);
+
+            if ($current < $compare) {
+                $this->addError($attribute, $label);
+            }
+        }
+    }
+
     public function attributeLabels()
     {
         return [
             'id' => 'ID',
-            'evaluation_cycle_id' => 'รอบการประเมิน',
+            'evaluation_cycle_id' => 'รอบการประเมินหลัก',
             'department_id' => 'หน่วยงาน',
+            'name_th' => 'ชื่อรอบการประเมินประจำหน่วยงาน',
+            'period_start' => 'วันเริ่มต้นรอบประเมิน',
+            'period_end' => 'วันสิ้นสุดรอบประเมิน',
+            'self_assessment_start' => 'เริ่มต้นประเมินตนเอง',
+            'self_assessment_end' => 'สิ้นสุดการประเมินตนเอง',
+            'supervisor_eval_start' => 'เริ่มต้นการประเมินโดยหัวหน้า',
+            'supervisor_eval_end' => 'สิ้นสุดการประเมินโดยหัวหน้า',
             'status' => 'สถานะรอบการประเมิน',
             'opened_at' => 'วันเวลาที่เปิดรอบ',
             'opened_by' => 'ผู้เปิดรอบ',
             'closed_at' => 'วันเวลาที่ปิดรอบ',
             'closed_by' => 'ผู้ปิดรอบ',
-            'notes' => 'หมายเหตุ',
+            'notes' => 'คำชี้แจง / หมายเหตุสำหรับบุคลากรในหน่วยงาน',
             'created_at' => 'สร้างเมื่อ',
             'updated_at' => 'แก้ไขล่าสุด',
         ];
+    }
+
+    public function beforeSave($insert)
+    {
+        if (!parent::beforeSave($insert)) {
+            return false;
+        }
+
+        foreach (['self_assessment_start', 'self_assessment_end', 'supervisor_eval_start', 'supervisor_eval_end'] as $attr) {
+            if (!empty($this->$attr)) {
+                $this->$attr = str_replace('T', ' ', (string)$this->$attr);
+                if (strlen($this->$attr) === 16) {
+                    $this->$attr .= ':00';
+                }
+            }
+        }
+
+        return true;
     }
 
     public function getCycle()
@@ -127,14 +184,61 @@ class DepartmentEvaluationCycle extends ActiveRecord
         ]);
 
         if (!$record) {
+            $masterCycle = EvaluationCycle::findOne($cycleId);
+            $dept = Department::findOne($rootDeptId);
             $record = new self();
             $record->evaluation_cycle_id = $cycleId;
             $record->department_id = $rootDeptId;
             $record->status = self::STATUS_PENDING;
+            if ($masterCycle) {
+                $deptName = $dept ? $dept->name_th : '';
+                $record->name_th = $deptName ? "{$masterCycle->name_th} ({$deptName})" : $masterCycle->name_th;
+                $record->period_start = $masterCycle->period_start;
+                $record->period_end = $masterCycle->period_end;
+                $record->self_assessment_start = $masterCycle->self_assessment_start;
+                $record->self_assessment_end = $masterCycle->self_assessment_end;
+                $record->supervisor_eval_start = $masterCycle->supervisor_eval_start;
+                $record->supervisor_eval_end = $masterCycle->supervisor_eval_end;
+            }
             $record->save(false);
         }
 
         return $record;
+    }
+
+    public function getEffectiveName(): string
+    {
+        return !empty($this->name_th) ? $this->name_th : ($this->cycle ? $this->cycle->name_th : 'รอบการประเมิน');
+    }
+
+    public function getEffectivePeriodStart(): ?string
+    {
+        return !empty($this->period_start) ? $this->period_start : ($this->cycle ? $this->cycle->period_start : null);
+    }
+
+    public function getEffectivePeriodEnd(): ?string
+    {
+        return !empty($this->period_end) ? $this->period_end : ($this->cycle ? $this->cycle->period_end : null);
+    }
+
+    public function getEffectiveSelfAssessmentStart(): ?string
+    {
+        return !empty($this->self_assessment_start) ? $this->self_assessment_start : ($this->cycle ? $this->cycle->self_assessment_start : null);
+    }
+
+    public function getEffectiveSelfAssessmentEnd(): ?string
+    {
+        return !empty($this->self_assessment_end) ? $this->self_assessment_end : ($this->cycle ? $this->cycle->self_assessment_end : null);
+    }
+
+    public function getEffectiveSupervisorEvalStart(): ?string
+    {
+        return !empty($this->supervisor_eval_start) ? $this->supervisor_eval_start : ($this->cycle ? $this->cycle->supervisor_eval_start : null);
+    }
+
+    public function getEffectiveSupervisorEvalEnd(): ?string
+    {
+        return !empty($this->supervisor_eval_end) ? $this->supervisor_eval_end : ($this->cycle ? $this->cycle->supervisor_eval_end : null);
     }
 
     /**

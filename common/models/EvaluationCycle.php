@@ -225,4 +225,19 @@ class EvaluationCycle extends ActiveRecord
 
         return $defaultTmpl ? $defaultTmpl->activeVersion : null;
     }
+
+    /**
+     * Get the department evaluation cycle record for a personnel
+     */
+    public function getDepartmentCycleForPersonnel(?Personnel $personnel): ?DepartmentEvaluationCycle
+    {
+        if (!$personnel || !$personnel->department_id) {
+            return null;
+        }
+        $rootId = DepartmentEvaluationCycle::getRootDeptId($personnel->department_id);
+        return DepartmentEvaluationCycle::findOne([
+            'evaluation_cycle_id' => $this->id,
+            'department_id' => $rootId,
+        ]);
+    }
 }

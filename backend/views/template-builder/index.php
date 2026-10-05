@@ -89,16 +89,15 @@ $deptName = $targetDepartment ? $targetDepartment->name_th : 'แบบฟอร
                             สถานะรอบประเมินของหน่วยงาน: <span class="badge bg-warning text-dark border border-warning">ยังไม่เปิดรอบ (อยู่ระหว่างเตรียมแบบฟอร์ม)</span>
                         </div>
                         <div class="small text-muted">
-                            ท่านสามารถปรับแต่งตัวชี้วัดด้านล่างให้สอดคล้องกับภาระงาน เมื่อพร้อมแล้ว ให้กดปุ่ม <strong>"ยืนยันและเปิดรอบการประเมิน"</strong> เพื่อล็อกเกณฑ์ถาวรและเปิดให้บุคลากรเริ่มประเมินตนเอง
+                            ท่านสามารถปรับแต่งตัวชี้วัดด้านล่างให้สอดคล้องกับภาระงาน เมื่อพร้อมแล้ว ให้กดปุ่ม <strong>"กำหนดวันเวลาและเปิดรอบการประเมิน"</strong> เพื่อตั้งชื่อรอบ กำหนดช่วงเวลาประเมินตนเองและหัวหน้าประเมินสำหรับหน่วยงาน พร้อมล็อกเกณฑ์ถาวร
                         </div>
                     </div>
                 </div>
                 <div class="mt-2 mt-md-0">
                     <?php if (!$isSuperAdmin): ?>
-                        <?= Html::a('<i class="bi bi-play-circle-fill me-1"></i> ยืนยันและเปิดรอบการประเมิน', ['/cycle/department-open', 'cycle_id' => $activeCycle->id, 'department_id' => $targetDeptId], [
+                        <?= Html::a('<i class="bi bi-calendar-plus-fill me-1"></i> กำหนดวันเวลาและเปิดรอบการประเมิน', ['/cycle/department-open', 'cycle_id' => $activeCycle->id], [
                             'class' => 'btn btn-success fw-bold shadow-sm px-3',
-                            'data-method' => 'post',
-                            'data-confirm' => "⚠️ คำเตือนสำคัญ:\nเมื่อเปิดรอบการประเมินสำหรับ {$targetDepartment->name_th} แล้ว\nระบบจะทำการล็อกโครงสร้างแบบประเมินถาวร (ไม่อนุญาตให้แก้ไขอีกเพื่อความเป็นธรรมต่อผู้รับการประเมิน)\nและจะเปิดให้บุคลากรเข้าทำแบบประเมินตนเองได้ทันที\n\nท่านตรวจสอบความถูกต้องของแบบประเมินครบถ้วนแล้วและต้องการเปิดรอบการประเมินใช่หรือไม่?",
+                            'title' => 'ไปหน้ากำหนดชื่อรอบ ช่วงเวลาประเมินตนเองและหัวหน้าประเมินสำหรับหน่วยงาน',
                         ]) ?>
                     <?php else: ?>
                         <span class="badge bg-secondary py-2 px-3 fs-7 text-white"><i class="bi bi-eye me-1"></i> รอผู้ดูแลหน่วยงานเป็นผู้เปิดรอบ (ส่วนกลางติดตามเท่านั้น)</span>
@@ -119,10 +118,22 @@ $deptName = $targetDepartment ? $targetDepartment->name_th : 'แบบฟอร
                             เปิดรอบเมื่อ: <strong><?= Yii::$app->formatter->asDatetime($deptCycle->opened_at, 'php:d/m/Y H:i') ?> น.</strong>
                             <?= $deptCycle->opener ? ('โดย: ' . Html::encode($deptCycle->opener->displayName)) : '' ?>
                             &bull; <span class="text-danger fw-semibold"><i class="bi bi-lock-fill"></i> แบบประเมินถูกล็อกการแก้ไข เพื่อความเป็นธรรมต่อผู้รับการประเมิน</span>
+                            <div class="mt-1 small">
+                                <span class="text-primary fw-semibold"><i class="bi bi-person-fill me-1"></i>ประเมินตนเอง:</span>
+                                <?= $deptCycle->effectiveSelfAssessmentStart ? Yii::$app->formatter->asDatetime($deptCycle->effectiveSelfAssessmentStart, 'php:d/m/Y H:i') : '-' ?> - 
+                                <strong class="text-danger"><?= $deptCycle->effectiveSelfAssessmentEnd ? Yii::$app->formatter->asDatetime($deptCycle->effectiveSelfAssessmentEnd, 'php:d/m/Y H:i') : '-' ?> น.</strong>
+                                &bull;
+                                <span class="text-success fw-semibold"><i class="bi bi-person-check-fill me-1"></i>หัวหน้าประเมิน:</span>
+                                <?= $deptCycle->effectiveSupervisorEvalStart ? Yii::$app->formatter->asDatetime($deptCycle->effectiveSupervisorEvalStart, 'php:d/m/Y H:i') : '-' ?> - 
+                                <strong class="text-danger"><?= $deptCycle->effectiveSupervisorEvalEnd ? Yii::$app->formatter->asDatetime($deptCycle->effectiveSupervisorEvalEnd, 'php:d/m/Y H:i') : '-' ?> น.</strong>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="d-flex align-items-center gap-2 mt-2 mt-md-0">
+                    <?php if (!$isSuperAdmin): ?>
+                        <?= Html::a('<i class="bi bi-pencil-square me-1"></i> แก้ไขกำหนดการรอบ', ['/cycle/department-update', 'cycle_id' => $activeCycle->id], ['class' => 'btn btn-sm btn-outline-primary fw-semibold shadow-sm']) ?>
+                    <?php endif; ?>
                     <?= Html::a('<i class="bi bi-speedometer2 me-1"></i> ดูความคืบหน้าการประเมิน', ['/monitor/index', 'dept_id' => $targetDeptId], ['class' => 'btn btn-sm btn-outline-success fw-semibold shadow-sm']) ?>
                 </div>
             </div>

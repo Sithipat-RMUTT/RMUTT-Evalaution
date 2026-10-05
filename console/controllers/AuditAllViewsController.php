@@ -11,6 +11,7 @@ use common\models\Personnel;
 use common\models\Department;
 use common\models\PersonnelType;
 use common\models\EvaluationResult;
+use common\models\DepartmentEvaluationCycle;
 use common\services\EvaluationCalculatorService;
 
 /**
@@ -349,8 +350,23 @@ class AuditAllViewsController extends Controller
             ]);
             $this->stdout("   ✔ [Backend] cycle/index.php (Central & Agency views): OK\n", Console::FG_GREEN);
             $passed++;
+
+            // Test 3 & 4: department_open and department_update views
+            $sampleDeptCycle = DepartmentEvaluationCycle::findOne(['department_id' => 1]) ?: new DepartmentEvaluationCycle(['department_id' => 1, 'evaluation_cycle_id' => 1]);
+            $out = $cycCtrl->renderPartial('@backend/views/cycle/department_open', [
+                'cycle' => $actCycle,
+                'deptCycle' => $sampleDeptCycle,
+                'targetDept' => $aritDept ?: new Department(['id' => 1, 'name_th' => 'สำนักวิทยบริการฯ']),
+            ]);
+            $out = $cycCtrl->renderPartial('@backend/views/cycle/department_update', [
+                'cycle' => $actCycle,
+                'deptCycle' => $sampleDeptCycle,
+                'targetDept' => $aritDept ?: new Department(['id' => 1, 'name_th' => 'สำนักวิทยบริการฯ']),
+            ]);
+            $this->stdout("   ✔ [Backend] cycle/department_open.php & department_update.php: OK\n", Console::FG_GREEN);
+            $passed++;
         } catch (\Throwable $e) {
-            $this->stdout("   ✖ [Backend] cycle/index.php ERROR: " . $e->getMessage() . "\n", Console::FG_RED, Console::BOLD);
+            $this->stdout("   ✖ [Backend] cycle views ERROR: " . $e->getMessage() . "\n", Console::FG_RED, Console::BOLD);
             $errors++;
         }
 

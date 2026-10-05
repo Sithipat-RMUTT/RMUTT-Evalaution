@@ -642,8 +642,11 @@ class EvaluationController extends Controller
         // 1. Timeline Enforcement
         if ($evaluation->cycle) {
             $nowTime = time();
-            $start = !empty($evaluation->cycle->self_assessment_start) ? strtotime((string)$evaluation->cycle->self_assessment_start) : null;
-            $end = !empty($evaluation->cycle->self_assessment_end) ? strtotime((string)$evaluation->cycle->self_assessment_end) : null;
+            $deptCycle = $evaluation->cycle->getDepartmentCycleForPersonnel($evaluation->personnel);
+            $startStr = $deptCycle ? $deptCycle->getEffectiveSelfAssessmentStart() : $evaluation->cycle->self_assessment_start;
+            $endStr = $deptCycle ? $deptCycle->getEffectiveSelfAssessmentEnd() : $evaluation->cycle->self_assessment_end;
+            $start = !empty($startStr) ? strtotime((string)$startStr) : null;
+            $end = !empty($endStr) ? strtotime((string)$endStr) : null;
 
             if ($start && $nowTime < $start) {
                 Yii::$app->session->setFlash('warning', 'ยังไม่ถึงกำหนดเวลาเปิดให้ประเมินตนเอง (เปิด: ' . Yii::$app->formatter->asDatetime($start, 'php:d/m/Y H:i') . ')');
@@ -753,8 +756,11 @@ class EvaluationController extends Controller
         // Timeline check
         if ($evaluation->cycle) {
             $nowTime = time();
-            $start = !empty($evaluation->cycle->supervisor_eval_start) ? strtotime((string)$evaluation->cycle->supervisor_eval_start) : null;
-            $end = !empty($evaluation->cycle->supervisor_eval_end) ? strtotime((string)$evaluation->cycle->supervisor_eval_end) : null;
+            $deptCycle = $evaluation->cycle->getDepartmentCycleForPersonnel($evaluation->personnel);
+            $startStr = $deptCycle ? $deptCycle->getEffectiveSupervisorEvalStart() : $evaluation->cycle->supervisor_eval_start;
+            $endStr = $deptCycle ? $deptCycle->getEffectiveSupervisorEvalEnd() : $evaluation->cycle->supervisor_eval_end;
+            $start = !empty($startStr) ? strtotime((string)$startStr) : null;
+            $end = !empty($endStr) ? strtotime((string)$endStr) : null;
 
             if ($start && $nowTime < $start) {
                 Yii::$app->session->setFlash('warning', 'ยังไม่ถึงกำหนดเวลาเปิดให้หัวหน้าประเมิน (เปิด: ' . Yii::$app->formatter->asDatetime($start, 'php:d/m/Y H:i') . ')');
