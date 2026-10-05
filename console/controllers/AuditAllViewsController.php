@@ -232,8 +232,14 @@ class AuditAllViewsController extends Controller
             foreach ($rootDepts as $rd) {
                 $scopedIds = Department::getAllScopedDeptIds($rd->id);
                 $cnt = (int)Personnel::find()->where(['in', 'department_id', $scopedIds])->andWhere(['status' => Personnel::STATUS_ACTIVE])->count();
+                $done = (int)Evaluation::find()
+                    ->innerJoinWith('personnel')
+                    ->where(['{{%evaluations}}.evaluation_cycle_id' => 1])
+                    ->andWhere(['in', '{{%personnel}}.department_id', $scopedIds])
+                    ->andWhere(['in', '{{%evaluations}}.status', [Evaluation::STATUS_COMPLETED, Evaluation::STATUS_ACKNOWLEDGED]])
+                    ->count();
             }
-            $this->stdout("   ✔ [Backend] Department Personnel Active Count Queries: OK\n", Console::FG_GREEN);
+            $this->stdout("   ✔ [Backend] Department Personnel & Evaluation Count Queries: OK\n", Console::FG_GREEN);
             $passed++;
         } catch (\Throwable $e) {
             $this->stdout("   ✖ [Backend] site/index.php ERROR: " . $e->getMessage() . "\n", Console::FG_RED, Console::BOLD);

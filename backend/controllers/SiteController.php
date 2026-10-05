@@ -422,9 +422,10 @@ class SiteController extends Controller
                 $scopedIds = Department::getAllScopedDeptIds($rd->id);
                 $staffCount = (int)Personnel::find()->where(['in', 'department_id', $scopedIds])->andWhere(['status' => Personnel::STATUS_ACTIVE])->count();
                 $evalDone = (int)Evaluation::find()
-                    ->where(['evaluation_cycle_id' => $selectedCycle->id])
-                    ->andWhere(['in', 'department_id', $scopedIds])
-                    ->andWhere(['status' => [Evaluation::STATUS_COMPLETED, Evaluation::STATUS_ACKNOWLEDGED]])
+                    ->innerJoinWith('personnel')
+                    ->where(['{{%evaluations}}.evaluation_cycle_id' => $selectedCycle->id])
+                    ->andWhere(['in', '{{%personnel}}.department_id', $scopedIds])
+                    ->andWhere(['in', '{{%evaluations}}.status', [Evaluation::STATUS_COMPLETED, Evaluation::STATUS_ACKNOWLEDGED]])
                     ->count();
 
                 $dc = $deptCycles[$rd->id] ?? null;
