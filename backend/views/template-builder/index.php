@@ -16,7 +16,7 @@ use yii\helpers\Url;
 $this->title = 'จัดการเกณฑ์และแบบประเมินผลการปฏิบัติงาน';
 $this->params['breadcrumbs'][] = $this->title;
 
-$deptName = $targetDepartment ? $targetDepartment->name_th : 'แบบฟอร์มมาตรฐานกลาง มหาวิทยาลัย';
+$deptName = $targetDepartment ? $targetDepartment->name_th : 'ภาพรวมแบบประเมิน';
 ?>
 
 <div class="template-builder-index py-3">
@@ -33,8 +33,8 @@ $deptName = $targetDepartment ? $targetDepartment->name_th : 'แบบฟอร
                         <i class="bi bi-building me-1"></i><?= Html::encode($targetDepartment->name_th) ?>
                     </span>
                 <?php else: ?>
-                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-1.5 fs-6">
-                        <i class="bi bi-star-fill me-1"></i>แบบฟอร์มมาตรฐานกลางของมหาวิทยาลัย
+                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-1.5 fs-6">
+                        <i class="bi bi-file-earmark-text me-1"></i>แม่แบบตั้งต้น
                     </span>
                 <?php endif; ?>
                 <?php if ($activeCycle): ?>
@@ -45,9 +45,9 @@ $deptName = $targetDepartment ? $targetDepartment->name_th : 'แบบฟอร
             </div>
             <p class="text-muted small mb-0">
                 <?php if ($targetDepartment): ?>
-                    หน่วยงานสามารถปรับแต่งตัวชี้วัด (KPI) ค่าน้ำหนัก และเกณฑ์คะแนนให้สอดคล้องกับภาระงานจริงของ <strong><?= Html::encode($targetDepartment->name_th) ?></strong> หากกลุ่มใดไม่ได้ปรับแต่ง ระบบจะใช้แบบฟอร์มมาตรฐานกลางของมหาวิทยาลัยโดยอัตโนมัติ
+                    หน่วยงานสามารถปรับแต่งตัวชี้วัด (KPI) ค่าน้ำหนัก และเกณฑ์คะแนนให้สอดคล้องกับภาระงานจริงของ <strong><?= Html::encode($targetDepartment->name_th) ?></strong>
                 <?php else: ?>
-                    กำหนดโครงสร้างและตัวชี้วัดของแบบฟอร์มมาตรฐานกลาง (มหาวิทยาลัย) สำหรับใช้เป็นต้นแบบให้ทุกหน่วยงาน
+                    กำหนดโครงสร้างและตัวชี้วัดของแบบประเมินสำหรับใช้งานในหน่วยงาน
                 <?php endif; ?>
             </p>
         </div>
@@ -58,7 +58,7 @@ $deptName = $targetDepartment ? $targetDepartment->name_th : 'แบบฟอร
                     <input type="hidden" name="r" value="template-builder/index">
                     <span class="small text-muted fw-bold text-nowrap"><i class="bi bi-building me-1"></i>สลับหน่วยงาน:</span>
                     <select name="department_id" class="form-select form-select-sm" style="min-width: 280px;" onchange="this.form.submit()">
-                        <option value="central" <?= empty($targetDeptId) ? 'selected' : '' ?>>⭐ แบบฟอร์มมาตรฐานกลาง (มหาวิทยาลัย)</option>
+                        <option value="central" <?= empty($targetDeptId) ? 'selected' : '' ?>>📄 แม่แบบตั้งต้น</option>
                         <optgroup label="หน่วยงาน / คณะ / สำนัก">
                             <?php foreach ($departments as $d): ?>
                                 <option value="<?= $d->id ?>" <?= $targetDeptId == $d->id ? 'selected' : '' ?>>
@@ -173,7 +173,7 @@ $deptName = $targetDepartment ? $targetDepartment->name_th : 'แบบฟอร
                     <i class="bi bi-check2-circle text-primary me-2"></i>เกณฑ์แบบประเมินสำหรับบุคลากร ๔ กลุ่มในสังกัด
                 </h6>
                 <small class="text-muted">
-                    เลือกปรับแต่งตัวชี้วัดภาระงาน (KPI) เฉพาะหน่วยงาน หรือใช้แบบฟอร์มมาตรฐานกลางของมหาวิทยาลัย
+                    ปรับแต่งตัวชี้วัดภาระงาน (KPI) ค่าน้ำหนัก และเกณฑ์คะแนนให้สอดคล้องกับภาระงานของหน่วยงาน
                 </small>
             </div>
             <span class="badge bg-light text-secondary border">ทั้งหมด 4 กลุ่มบุคลากร</span>
@@ -186,7 +186,7 @@ $deptName = $targetDepartment ? $targetDepartment->name_th : 'แบบฟอร
                         <th style="width: 240px;" class="ps-4">กลุ่มประเภทบุคลากร</th>
                         <th>สถานะแบบประเมินที่ใช้งานจริง</th>
                         <th style="width: 220px;">โครงสร้างคะแนน & ตัวชี้วัด</th>
-                        <th class="text-end pe-4" style="width: 380px;">การจัดการเกณฑ์ของหน่วยงาน</th>
+                        <th class="text-end pe-4" style="width: 280px;">การจัดการเกณฑ์ของหน่วยงาน</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -229,7 +229,7 @@ $deptName = $targetDepartment ? $targetDepartment->name_th : 'แบบฟอร
                                 <?php elseif ($centralTpl): ?>
                                     <div class="d-flex align-items-center gap-2 mb-1">
                                         <span class="badge bg-light text-secondary border px-2.5 py-1.5">
-                                            <i class="bi bi-shield-check me-1 text-primary"></i>ใช้แบบฟอร์มมาตรฐานกลาง (ค่าเริ่มต้น)
+                                            <i class="bi bi-file-earmark-text me-1 text-primary"></i>แบบประเมินประจำหน่วยงาน
                                         </span>
                                     </div>
                                     <div class="text-dark fw-medium fs-6">
@@ -237,7 +237,6 @@ $deptName = $targetDepartment ? $targetDepartment->name_th : 'แบบฟอร
                                     </div>
                                     <small class="text-muted">
                                         รหัส: <code><?= Html::encode($centralTpl->code) ?></code>
-                                        • มหาวิทยาลัยกำหนด
                                     </small>
                                 <?php else: ?>
                                     <span class="text-danger fw-semibold">
@@ -267,53 +266,23 @@ $deptName = $targetDepartment ? $targetDepartment->name_th : 'แบบฟอร
                             <!-- 4. Actions -->
                             <td class="text-end pe-4">
                                 <div class="d-inline-flex align-items-center gap-2 flex-wrap justify-content-end">
-                                    <?php if ($isCustom && $customTpl): ?>
-                                        <!-- Case A: Department has customized template -->
-                                        <?php if ($isDeptLocked): ?>
-                                            <?= Html::a('<i class="bi bi-eye me-1"></i>ดูโครงสร้าง (ล็อกแล้ว)', ['/template-builder/builder', 'id' => $customTpl->id], [
-                                                'class' => 'btn btn-sm btn-outline-secondary fw-semibold',
-                                                'title' => 'ดูโครงสร้างแบบประเมิน (ล็อกการแก้ไขเนื่องจากเปิดรอบแล้ว)',
-                                            ]) ?>
-                                            <?= Html::a('<i class="bi bi-file-earmark-text me-1"></i>Live Preview', ['/template-builder/preview', 'id' => $customTpl->id], [
-                                                'class' => 'btn btn-sm btn-outline-info text-dark shadow-sm',
-                                                'title' => 'ดูตัวอย่างแบบฟอร์มเสมือนจริง',
-                                                'target' => '_blank',
-                                            ]) ?>
-                                        <?php else: ?>
-                                            <?= Html::a('<i class="bi bi-pencil-square me-1"></i>ปรับแต่งตัวชี้วัด (KPI)', ['/template-builder/builder', 'id' => $customTpl->id], [
-                                                'class' => 'btn btn-sm btn-primary fw-semibold shadow-sm',
+                                    <?php if ($isDeptLocked): ?>
+                                        <span class="badge bg-light text-secondary border px-2.5 py-1.5"><i class="bi bi-lock-fill me-1"></i>ล็อกแล้ว</span>
+                                        <?= Html::a('<i class="bi bi-eye me-1"></i>ดูแบบฟอร์ม', ['/template-builder/preview', 'id' => ($customTpl ? $customTpl->id : ($centralTpl ? $centralTpl->id : null))], [
+                                            'class' => 'btn btn-sm btn-outline-secondary',
+                                            'title' => 'ดูตัวอย่างแบบฟอร์ม',
+                                            'target' => '_blank',
+                                        ]) ?>
+                                    <?php else: ?>
+                                        <?php if ($isCustom && $customTpl): ?>
+                                            <?= Html::a('<i class="bi bi-pencil-square me-1"></i>ปรับแต่งแบบฟอร์ม', ['/template-builder/builder', 'id' => $customTpl->id], [
+                                                'class' => 'btn btn-sm btn-primary fw-semibold shadow-sm px-3',
                                                 'title' => 'ปรับแต่งตัวชี้วัด ค่าน้ำหนัก และเกณฑ์คะแนนตามภาระงานของหน่วยงาน',
                                             ]) ?>
-                                            <?= Html::a('<i class="bi bi-eye"></i>', ['/template-builder/preview', 'id' => $customTpl->id], [
-                                                'class' => 'btn btn-sm btn-outline-secondary',
-                                                'title' => 'ดูตัวอย่างแบบฟอร์ม',
-                                                'target' => '_blank',
-                                            ]) ?>
-                                            <?= Html::a('<i class="bi bi-arrow-counterclockwise me-1"></i>คืนค่าเป็นแบบส่วนกลาง', ['/template-builder/reset-to-central', 'personnel_type_id' => $pt->id, 'department_id' => $targetDeptId], [
-                                                'class' => 'btn btn-sm btn-outline-danger',
-                                                'data-method' => 'post',
-                                                'data-confirm' => "ยืนยันการคืนค่าเป็นแบบฟอร์มมาตรฐานกลางของมหาวิทยาลัยสำหรับกลุ่ม '{$pt->name_th}'?\n\nการปรับแต่งตัวชี้วัดเฉพาะของหน่วยงานจะถูกยกเลิก และบุคลากรจะกลับไปใช้แบบประเมินมาตรฐานกลางทันที",
-                                                'title' => 'ยกเลิกการปรับแต่งเฉพาะหน่วยงานและกลับไปใช้แบบมาตรฐานกลาง',
-                                            ]) ?>
-                                        <?php endif; ?>
-                                    <?php elseif ($centralTpl): ?>
-                                        <!-- Case B: Department is using central template -->
-                                        <?php if ($isDeptLocked): ?>
-                                            <span class="badge bg-light text-secondary border px-2 py-1.5"><i class="bi bi-lock-fill me-1"></i>ใช้แบบกลาง (ล็อกแล้ว)</span>
-                                            <?= Html::a('<i class="bi bi-eye me-1"></i>ดูฟอร์มกลาง', ['/template-builder/preview', 'id' => $centralTpl->id], [
-                                                'class' => 'btn btn-sm btn-outline-secondary',
-                                                'title' => 'ดูตัวอย่างแบบฟอร์มมาตรฐานกลาง',
-                                                'target' => '_blank',
-                                            ]) ?>
                                         <?php else: ?>
-                                            <?= Html::a('<i class="bi bi-sliders me-1"></i>นำแบบส่วนกลางมาปรับแต่งเกณฑ์ของหน่วยงาน', ['/template-builder/customize', 'personnel_type_id' => $pt->id, 'department_id' => $targetDeptId], [
-                                                'class' => 'btn btn-sm btn-primary fw-semibold shadow-sm',
-                                                'title' => 'คัดลอกแบบฟอร์มมาตรฐานกลางมาปรับแต่งตัวชี้วัดและเกณฑ์คะแนนเฉพาะหน่วยงานทันที',
-                                            ]) ?>
-                                            <?= Html::a('<i class="bi bi-eye me-1"></i>ดูฟอร์มกลาง', ['/template-builder/preview', 'id' => $centralTpl->id], [
-                                                'class' => 'btn btn-sm btn-outline-secondary',
-                                                'title' => 'ดูตัวอย่างแบบฟอร์มมาตรฐานกลาง',
-                                                'target' => '_blank',
+                                            <?= Html::a('<i class="bi bi-pencil-square me-1"></i>ปรับแต่งแบบฟอร์ม', ['/template-builder/customize', 'personnel_type_id' => $pt->id, 'department_id' => $targetDeptId], [
+                                                'class' => 'btn btn-sm btn-primary fw-semibold shadow-sm px-3',
+                                                'title' => 'ปรับแต่งตัวชี้วัด ค่าน้ำหนัก และเกณฑ์คะแนนตามภาระงานของหน่วยงาน',
                                             ]) ?>
                                         <?php endif; ?>
                                     <?php endif; ?>
@@ -329,7 +298,7 @@ $deptName = $targetDepartment ? $targetDepartment->name_th : 'แบบฟอร
             <div class="d-flex align-items-center gap-2 text-muted small">
                 <i class="bi bi-info-circle-fill text-primary fs-6"></i>
                 <div>
-                    <strong>แนวปฏิบัติ:</strong> หากหน่วยงานมีตัวชี้วัดเฉพาะด้าน (เช่น งานพัฒนาระบบ งานบริการห้องสมุด งานห้องปฏิบัติการ) ให้คลิก <strong>"นำแบบส่วนกลางมาปรับแต่งเกณฑ์ของหน่วยงาน"</strong> เพื่อเพิ่ม/ลดตัวชี้วัดได้ตามต้องการ หากกลุ่มใดไม่มีตัวชี้วัดเฉพาะทาง ระบบจะใช้แบบฟอร์มมาตรฐานกลางของมหาวิทยาลัยโดยอัตโนมัติ
+                    <strong>แนวปฏิบัติ:</strong> แต่ละหน่วยงานสามารถคลิก <strong>"ปรับแต่งแบบฟอร์ม"</strong> เพื่อเพิ่ม/ลดตัวชี้วัด (KPI) ปรับค่าน้ำหนัก และเกณฑ์คะแนนให้สอดคล้องกับภาระงานของตนเอง เมื่อพร้อมแล้วจึงเข้าสู่ขั้นตอนเปิดรอบการประเมิน
                 </div>
             </div>
         </div>
