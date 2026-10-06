@@ -110,12 +110,21 @@ class EvaluationCycle extends ActiveRecord
         ];
     }
 
+    public static function getStatusOptions()
+    {
+        return [
+            self::STATUS_DRAFT => 'ร่าง (Draft)',
+            self::STATUS_ACTIVE => 'เปิดรอบประเมิน (Active)',
+            self::STATUS_CLOSED => 'ปิดรอบประเมิน (Closed)',
+        ];
+    }
+
     public function getStatusLabel()
     {
         $labels = [
             self::STATUS_DRAFT => '<span class="badge bg-secondary">ร่าง (Draft)</span>',
-            self::STATUS_ACTIVE => '<span class="badge bg-primary">เปิดประเมินตนเอง</span>',
-            self::STATUS_EVALUATION => '<span class="badge bg-warning text-dark">หัวหน้าประเมิน</span>',
+            self::STATUS_ACTIVE => '<span class="badge bg-primary">เปิดรอบประเมิน</span>',
+            self::STATUS_EVALUATION => '<span class="badge bg-primary">เปิดรอบประเมิน</span>',
             self::STATUS_CLOSED => '<span class="badge bg-success">ปิดรอบประเมิน</span>',
             self::STATUS_ARCHIVED => '<span class="badge bg-dark">จัดเก็บถาวร</span>',
         ];

@@ -52,12 +52,7 @@ use common\models\EvaluationCycle;
             </div>
 
             <div class="col-md-6">
-                <?= $form->field($model, 'status')->dropDownList([
-                    EvaluationCycle::STATUS_DRAFT => 'ร่าง (Draft)',
-                    EvaluationCycle::STATUS_ACTIVE => 'เปิดประเมินตนเอง (Active)',
-                    EvaluationCycle::STATUS_EVALUATION => 'หัวหน้าประเมิน (Supervisor Evaluation)',
-                    EvaluationCycle::STATUS_CLOSED => 'ปิดรอบประเมิน (Closed)',
-                ]) ?>
+                <?= $form->field($model, 'status')->dropDownList(EvaluationCycle::getStatusOptions()) ?>
             </div>
             <div class="col-md-6">
                 <?= $form->field($model, 'description')->textInput() ?>
